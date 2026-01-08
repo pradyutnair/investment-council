@@ -16,9 +16,11 @@ export const mastra = new Mastra({
     specialSitsAgent,
     distressedAgent,
   },
-  vectors: {
-    vectorStore,
-  },
+  ...(vectorStore && {
+    vectors: {
+      vectorStore,
+    },
+  }),
 });
 
 /**

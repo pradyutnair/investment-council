@@ -8,10 +8,14 @@ import { createOpenAI } from '@ai-sdk/openai';
 const requiredEnvVars = {
   OPENAI_API_KEY: process.env.OPENAI_API_KEY,
   FMP_API_KEY: process.env.FMP_API_KEY,
+} as const;
+
+// Optional environment variables (for RAG functionality)
+const optionalEnvVars = {
   POSTGRES_CONNECTION_STRING: process.env.POSTGRES_CONNECTION_STRING,
 } as const;
 
-// Validate environment variables at startup
+// Validate required environment variables at startup
 Object.entries(requiredEnvVars).forEach(([key, value]) => {
   if (!value) {
     throw new Error(`Missing required environment variable: ${key}`);
@@ -32,6 +36,6 @@ export const openaiProvider = createOpenAI({
  */
 export const config = {
   fmpApiKey: requiredEnvVars.FMP_API_KEY,
-  postgresConnectionString: requiredEnvVars.POSTGRES_CONNECTION_STRING,
-  openaiModelId: 'gpt-4o-mini',
+  postgresConnectionString: optionalEnvVars.POSTGRES_CONNECTION_STRING,
+  openaiModelId: 'gpt-5.2',
 } as const;

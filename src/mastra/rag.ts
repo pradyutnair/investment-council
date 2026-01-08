@@ -7,10 +7,14 @@ import path from 'path';
 /**
  * PostgreSQL vector store for RAG knowledge base
  * Uses pgvector extension for similarity search
+ *
+ * Note: Only initialized if POSTGRES_CONNECTION_STRING is provided
  */
-export const vectorStore = new PgVector({
-  connectionString: config.postgresConnectionString,
-});
+export const vectorStore = config.postgresConnectionString
+  ? new PgVector({
+      connectionString: config.postgresConnectionString,
+    })
+  : null;
 
 /**
  * Create vector index for investment wisdom
