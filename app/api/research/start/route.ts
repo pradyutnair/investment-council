@@ -37,13 +37,19 @@ export async function POST(req: NextRequest) {
     const stream = new ReadableStream({
       async start(controller) {
         try {
+          // Update status to 'researching' when research actually starts
+          await supabase
+            .from('research_sessions')
+            .update({ status: 'researching', research_started_at: new Date().toISOString() })
+            .eq('id', sessionId);
+
           // Start research
           const researchGenerator = geminiResearch.startResearch({
             thesis: session.thesis,
             dealId: session.id,
           });
 
-          // Stream thought steps to client
+          // Stream to client - only send completion/error events, not progress
           for await (const step of researchGenerator) {
             if (step.type === 'complete') {
               // Save final report to database
@@ -58,11 +64,9 @@ export async function POST(req: NextRequest) {
               const data = JSON.stringify({ type: 'error', content: step.content });
               controller.enqueue(encoder.encode(`data: ${data}\n\n`));
               break;
-            } else {
-              // Send thought step
-              const data = JSON.stringify(step);
-              controller.enqueue(encoder.encode(`data: ${data}\n\n`));
             }
+            // Server-side logging only - don't stream progress to client
+            console.log(`[Research ${sessionId}] ${step.type}: ${step.content}`);
           }
 
           controller.close();

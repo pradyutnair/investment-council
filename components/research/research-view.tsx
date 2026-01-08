@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -9,7 +9,6 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Loader2, FileText, MessageSquare, Gavel, CheckCircle2, AlertCircle } from 'lucide-react';
-import { toast } from 'sonner';
 import ReactMarkdown from 'react-markdown';
 import { ChatInterface } from './chat-interface';
 import { VerdictForm } from './verdict-form';
@@ -19,8 +18,6 @@ interface ResearchViewProps {
   session: ResearchSession;
   initialMessages: any[];
 }
-
-type ResearchStep = { type: string; content: string; timestamp: string };
 
 export function ResearchView({ session, initialMessages }: ResearchViewProps) {
   const router = useRouter();
@@ -33,22 +30,14 @@ export function ResearchView({ session, initialMessages }: ResearchViewProps) {
   // Research state
   const [isResearching, setIsResearching] = useState(false);
   const [researchError, setResearchError] = useState<string | null>(null);
-  const [researchSteps, setResearchSteps] = useState<ResearchStep[]>([]);
 
   // Council state
   const [isCouncilRunning, setIsCouncilRunning] = useState(false);
 
-  // Auto-start research if in researching state
-  useEffect(() => {
-    if (status === 'researching' && !researchReport && !isResearching) {
-      startResearch();
-    }
-  }, [status, researchReport]);
-
   const startResearch = async () => {
     setIsResearching(true);
     setResearchError(null);
-    setResearchSteps([]);
+    setStatus('researching');
 
     try {
       const response = await fetch('/api/research/start', {
@@ -82,13 +71,9 @@ export function ResearchView({ session, initialMessages }: ResearchViewProps) {
                 setResearchReport(data.report);
                 setStatus('council_gather');
                 router.refresh();
-                toast.success('Research completed!');
               } else if (data.type === 'error') {
                 setResearchError(data.content || 'Research failed');
-                toast.error(data.content || 'Research failed');
                 setIsResearching(false);
-              } else {
-                setResearchSteps((prev) => [...prev, data]);
               }
             } catch (e) {
               // Skip invalid JSON
@@ -99,7 +84,6 @@ export function ResearchView({ session, initialMessages }: ResearchViewProps) {
     } catch (error) {
       console.error('Research error:', error);
       setResearchError(error instanceof Error ? error.message : 'Failed to complete research');
-      toast.error('Failed to complete research');
     } finally {
       setIsResearching(false);
     }
@@ -146,9 +130,8 @@ export function ResearchView({ session, initialMessages }: ResearchViewProps) {
               } else if (data.type === 'complete') {
                 setStatus('deliberation');
                 router.refresh();
-                toast.success('Council analysis completed!');
               } else if (data.type === 'error') {
-                toast.error(data.message);
+                console.error('Council error:', data.message);
               }
             } catch (e) {
               // Skip invalid JSON
@@ -158,7 +141,6 @@ export function ResearchView({ session, initialMessages }: ResearchViewProps) {
       }
     } catch (error) {
       console.error('Council error:', error);
-      toast.error('Failed to complete council analysis');
     } finally {
       setIsCouncilRunning(false);
     }
@@ -166,6 +148,8 @@ export function ResearchView({ session, initialMessages }: ResearchViewProps) {
 
   const getStatusBadge = () => {
     switch (status) {
+      case 'pending':
+        return <Badge variant="outline"><FileText className="w-3 h-3 mr-1" /> Ready</Badge>;
       case 'researching':
         return <Badge variant="outline"><Loader2 className="w-3 h-3 mr-1 animate-spin" /> Researching</Badge>;
       case 'council_gather':
@@ -208,7 +192,7 @@ export function ResearchView({ session, initialMessages }: ResearchViewProps) {
                 Council
                 {status === 'finalized' && <CheckCircle2 className="w-3 h-3 text-green-500" />}
               </TabsTrigger>
-              <TabsTrigger value="deliberation" className="gap-2" disabled={status === 'researching'}>
+              <TabsTrigger value="deliberation" className="gap-2" disabled={status === 'pending' || status === 'researching'}>
                 <MessageSquare className="w-4 h-4" />
                 Chat
               </TabsTrigger>
@@ -232,45 +216,32 @@ export function ResearchView({ session, initialMessages }: ResearchViewProps) {
                           </Button>
                         </div>
                       </Card>
-                    ) : isResearching && researchSteps.length > 0 ? (
-                      <div className="space-y-3">
-                        {researchSteps.map((step, i) => (
-                          <Card key={i} className="p-4">
-                            <div className="flex items-start gap-3">
-                              {step.type === 'error' ? (
-                                <AlertCircle className="w-4 h-4 text-destructive mt-0.5" />
-                              ) : (
-                                <Loader2 className="w-4 h-4 animate-spin mt-0.5" />
-                              )}
-                              <div>
-                                <p className="text-sm font-medium capitalize">{step.type}</p>
-                                <p className="text-sm text-muted-foreground">{step.content}</p>
-                              </div>
-                            </div>
-                          </Card>
-                        ))}
-                      </div>
+                    ) : isResearching ? (
+                      <Card className="p-8 text-center">
+                        <div className="flex flex-col items-center gap-4">
+                          <Loader2 className="w-12 h-12 animate-spin text-primary" />
+                          <div>
+                            <h3 className="font-semibold mb-2">Deep Research in Progress</h3>
+                            <p className="text-sm text-muted-foreground">
+                              This may take several minutes. The AI is conducting comprehensive research on your thesis.
+                            </p>
+                          </div>
+                        </div>
+                      </Card>
                     ) : (
                       <Card className="p-8 text-center">
-                        {isResearching ? (
-                          <div className="flex flex-col items-center gap-4">
-                            <Loader2 className="w-8 h-8 animate-spin" />
-                            <p>Initiating deep research...</p>
+                        <div className="space-y-4">
+                          <FileText className="w-12 h-12 mx-auto text-muted-foreground" />
+                          <div>
+                            <h3 className="font-semibold mb-2">Ready to Start Research</h3>
+                            <p className="text-sm text-muted-foreground mb-4">
+                              Gemini Deep Research will analyze your thesis and provide a comprehensive report.
+                            </p>
+                            <Button onClick={startResearch} size="lg">
+                              Start Deep Research
+                            </Button>
                           </div>
-                        ) : (
-                          <div className="space-y-4">
-                            <AlertCircle className="w-12 h-12 mx-auto text-muted-foreground" />
-                            <div>
-                              <h3 className="font-semibold mb-2">Ready to Start Research</h3>
-                              <p className="text-sm text-muted-foreground mb-4">
-                                Gemini Deep Research will analyze your thesis and provide a comprehensive report.
-                              </p>
-                              <Button onClick={startResearch} size="lg">
-                                Start Deep Research
-                              </Button>
-                            </div>
-                          </div>
-                        )}
+                        </div>
                       </Card>
                     )}
                   </div>

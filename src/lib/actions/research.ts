@@ -7,7 +7,7 @@ export interface ResearchSession {
   user_id: string
   title: string
   thesis: string
-  status: 'researching' | 'council_gather' | 'council_debate' | 'deliberation' | 'finalized'
+  status: 'pending' | 'researching' | 'council_gather' | 'council_debate' | 'deliberation' | 'finalized'
   research_report: string | null
   research_started_at: string | null
   research_completed_at: string | null
@@ -68,8 +68,7 @@ export async function createResearchSession(title: string, thesis: string): Prom
       user_id: user.id,
       title,
       thesis,
-      status: 'researching',
-      research_started_at: new Date().toISOString(),
+      status: 'pending',
     })
     .select()
     .single()

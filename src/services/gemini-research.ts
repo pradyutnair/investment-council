@@ -54,10 +54,19 @@ export class GeminiResearchService {
   }
 
   private buildResearchPrompt(thesis: string): string {
-    return `You are an expert investment analyst conducting deep research on the following investment thesis.
+    return `You are a top hedge fund analyst, I am your PM. I want you to conduct deep research on the following investment thesis/query.
 
-INVESTMENT THESIS TO INVESTIGATE:
+INVESTMENT THESIS/QUERY TO INVESTIGATE:
 ${thesis}
+
+INVESTMENT MANDATE & PREFERENCES:
+You should approach this with the following investment philosophy in mind:
+- Pitch me a special situation (spinoffs, demergers, restructuring, Joel Greenblatt style) or value investment opportunity that has asymmetric risk reward
+- I prefer to invest where most people aren't looking so there's lesser competition - something like sub $1bn market cap, low/no analyst coverage, US market
+- However if the opportunity is very compelling I don't mind going out of these factors
+- I don't mind the volatility, but I want a very good payoff - even better if there's a clear catalyst
+- If it's a value situation - I want it to be deep value and make sure it isn't a value trap
+- I want to allocate a good chunk - roughly 10-15% position size
 
 RESEARCH MANDATE:
 Conduct comprehensive due diligence covering:
@@ -66,37 +75,54 @@ Conduct comprehensive due diligence covering:
    - Analyze the core premise of the investment thesis
    - Identify key assumptions and their validity
    - Assess the logical consistency of the thesis
+   - Is this genuinely asymmetric risk/reward?
 
-2. BUSINESS ANALYSIS (if applicable companies are identified)
+2. SPECIAL SITUATION ANALYSIS (if applicable)
+   - Type of situation (spinoff, demerger, restructuring, activism, etc.)
+   - Timeline and key milestones
+   - Why is this mispriced? What's the market missing?
+   - Forced selling or structural reasons for mispricing
+
+3. BUSINESS ANALYSIS
    - Business models and competitive positioning
    - Revenue streams and unit economics
-   - Management quality and track record
+   - Management quality and track record (especially capital allocation)
    - Moat analysis (competitive advantages)
+   - Insider ownership and alignment
 
-3. FINANCIAL ANALYSIS (if applicable companies are identified)
+4. FINANCIAL ANALYSIS
    - Historical financial performance (5+ years)
    - Profitability metrics (margins, ROIC, FCF)
-   - Balance sheet health (debt, liquidity)
-   - Valuation analysis (P/E, EV/EBITDA, DCF)
+   - Balance sheet health (debt, liquidity, hidden assets)
+   - Valuation analysis (P/E, EV/EBITDA, DCF, liquidation value)
+   - Is this genuinely cheap or a value trap?
 
-4. INDUSTRY & MARKET CONTEXT
+5. INDUSTRY & MARKET CONTEXT
    - Industry dynamics and growth outlook
    - Competitive landscape
-   - Regulatory environment
-   - Market share trends
+   - Analyst coverage (how many analysts? institutional ownership?)
+   - Market cap and liquidity considerations
 
-5. RISKS & CATALYSTS
+6. CATALYSTS & TIMELINE
+   - Specific catalysts that will unlock value
+   - Expected timeline for each catalyst
+   - What needs to happen for the thesis to play out?
+
+7. RISKS & VALUE TRAP ANALYSIS
    - Key investment risks
-   - Potential catalysts (positive and negative)
-   - Scenario analysis
-   - Black swan events to consider
+   - Why might this be a value trap?
+   - What could go wrong?
+   - Downside scenario analysis
+   - Position sizing considerations for 10-15% allocation
 
 OUTPUT FORMAT:
 Provide a comprehensive markdown report structured as a professional investment memo with:
-- Executive Summary (with thesis validation)
+- Executive Summary (with clear buy/pass recommendation)
+- Investment thesis in 2-3 sentences
 - Detailed sections for each area above
 - Financial tables where relevant
 - Clear investment conclusion with confidence level
+- Specific entry price targets and position sizing
 - Key questions that remain unanswered
 
 Be thorough, objective, and data-driven. Cite specific metrics and sources where possible.
