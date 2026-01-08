@@ -36,6 +36,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Research report not found' }, { status: 400 });
     }
 
+    // TypeScript now knows research_report is not null
+    const researchReport = session.research_report;
+    const thesis = session.thesis;
+
     // Set up SSE stream
     const encoder = new TextEncoder();
     const stream = new ReadableStream({
@@ -46,8 +50,8 @@ export async function POST(req: NextRequest) {
 
           // Run council analysis
           const { analyses, debate } = await councilService.runCouncilAnalysis({
-            researchReport: session.research_report,
-            thesis: session.thesis,
+            researchReport,
+            thesis,
           });
 
           // Send individual analyses as they complete

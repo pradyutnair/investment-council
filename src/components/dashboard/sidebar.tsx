@@ -12,34 +12,33 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { createClient } from '@/lib/supabase/client'
-import { getDealMemos, deleteDealMemo } from '@/lib/actions/deals'
-import type { DealMemo } from '@/types/deals'
+import { getUserResearchSessions, deleteResearchSession } from '@/lib/actions/research'
+import type { ResearchSession } from '@/lib/actions/research'
 import { Plus, LogOut, Trash2 } from 'lucide-react'
 
-const STATUS_LABELS = {
-  scouting: 'Scout',
+const STATUS_LABELS: Record<string, string> = {
   researching: 'Research',
-  council_review: 'Council',
-  interrogation: 'Interrogate',
+  council_gather: 'Council',
+  council_debate: 'Debate',
+  deliberation: 'Chat',
   finalized: 'Final',
 }
 
-const STATUS_VARIANTS = {
-  scouting: 'secondary',
+const STATUS_VARIANTS: Record<string, 'default' | 'secondary' | 'outline'> = {
   researching: 'default',
-  council_review: 'default',
-  interrogation: 'default',
+  council_gather: 'default',
+  council_debate: 'default',
+  deliberation: 'secondary',
   finalized: 'outline',
 } as const
 
 export function Sidebar() {
   const router = useRouter()
   const supabase = createClient()
-  const [deals, setDeals] = useState<DealMemo[]>([])
+  const [sessions, setSessions] = useState<ResearchSession[]>([])
   const [user, setUser] = useState<any>(null)
 
   useEffect(() => {
@@ -48,39 +47,40 @@ export function Sidebar() {
       setUser(user)
     })
 
-    // Load deals
-    loadDeals()
+    // Load research sessions
+    loadSessions()
 
     // Subscribe to auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
       supabase.auth.getUser().then(({ data: { user } }) => {
         setUser(user)
       })
+      loadSessions()
     })
 
     return () => subscription.unsubscribe()
   }, [])
 
-  const loadDeals = async () => {
+  const loadSessions = async () => {
     try {
-      const data = await getDealMemos()
-      setDeals(data)
+      const data = await getUserResearchSessions()
+      setSessions(data)
     } catch (error) {
-      console.error('Failed to load deal memos:', error)
+      console.error('Failed to load research sessions:', error)
     }
   }
 
-  const handleNewDeal = async () => {
-    router.push('/dashboard/deal/new')
+  const handleNewResearch = async () => {
+    router.push('/dashboard/research/new')
   }
 
-  const handleDeleteDeal = async (dealId: string, e: React.MouseEvent) => {
+  const handleDeleteSession = async (sessionId: string, e: React.MouseEvent) => {
     e.preventDefault()
     try {
-      await deleteDealMemo(dealId)
-      setDeals(deals.filter(d => d.id !== dealId))
+      await deleteResearchSession(sessionId)
+      setSessions(sessions.filter(s => s.id !== sessionId))
     } catch (error) {
-      console.error('Failed to delete deal memo:', error)
+      console.error('Failed to delete session:', error)
     }
   }
 
@@ -99,56 +99,60 @@ export function Sidebar() {
       {/* Header */}
       <div className="p-3">
         <Button
-          onClick={handleNewDeal}
+          onClick={handleNewResearch}
           variant="outline"
           className="w-full justify-start h-9 text-sm"
           size="sm"
         >
           <Plus className="w-3.5 h-3.5 mr-2" />
-          New deal memo
+          New research
         </Button>
       </div>
 
       <Separator className="bg-border/40" />
 
-      {/* Deal Memos List */}
+      {/* Research Sessions List */}
       <ScrollArea className="flex-1 min-h-0">
         <div className="p-2 space-y-0.5">
-          {deals.map((deal) => (
-            <div key={deal.id} className="group relative">
+          {sessions.map((session) => (
+            <div key={session.id} className="group relative">
               <Link
-                href={`/dashboard/deal/${deal.id}`}
+                href={`/dashboard/research/${session.id}`}
                 className="flex flex-col gap-1 px-2.5 py-2 rounded-md hover:bg-accent/50 transition-colors"
               >
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-sm font-medium truncate text-foreground">
-                    {deal.company_name}
+                    {session.title}
                   </span>
                   <Button
                     variant="ghost"
                     size="sm"
                     className="opacity-0 group-hover:opacity-100 h-6 w-6 p-0 hover:text-destructive shrink-0"
-                    onClick={(e) => handleDeleteDeal(deal.id, e)}
+                    onClick={(e) => handleDeleteSession(session.id, e)}
                   >
                     <Trash2 className="w-3 h-3" />
                   </Button>
                 </div>
                 <div className="flex items-center gap-2">
-                  {deal.ticker && (
-                    <span className="text-xs text-muted-foreground font-mono">
-                      {deal.ticker}
-                    </span>
-                  )}
-                  <Badge 
-                    variant={STATUS_VARIANTS[deal.status]}
-                    className="text-[10px] h-4 px-1.5"
+                  <span className="text-xs text-muted-foreground truncate">
+                    {session.thesis.substring(0, 30)}...
+                  </span>
+                  <Badge
+                    variant={STATUS_VARIANTS[session.status]}
+                    className="text-[10px] h-4 px-1.5 shrink-0"
                   >
-                    {STATUS_LABELS[deal.status]}
+                    {STATUS_LABELS[session.status]}
                   </Badge>
                 </div>
               </Link>
             </div>
           ))}
+          {sessions.length === 0 && (
+            <div className="px-2.5 py-4 text-center text-sm text-muted-foreground">
+              <p>No research sessions yet.</p>
+              <p className="text-xs mt-1">Create one to get started.</p>
+            </div>
+          )}
         </div>
       </ScrollArea>
 

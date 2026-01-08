@@ -32,6 +32,7 @@ export function ResearchView({ session, initialMessages }: ResearchViewProps) {
 
   // Research state
   const [isResearching, setIsResearching] = useState(false);
+  const [researchError, setResearchError] = useState<string | null>(null);
   const [researchSteps, setResearchSteps] = useState<ResearchStep[]>([]);
 
   // Council state
@@ -46,6 +47,7 @@ export function ResearchView({ session, initialMessages }: ResearchViewProps) {
 
   const startResearch = async () => {
     setIsResearching(true);
+    setResearchError(null);
     setResearchSteps([]);
 
     try {
@@ -82,7 +84,8 @@ export function ResearchView({ session, initialMessages }: ResearchViewProps) {
                 router.refresh();
                 toast.success('Research completed!');
               } else if (data.type === 'error') {
-                toast.error(data.message);
+                setResearchError(data.content || 'Research failed');
+                toast.error(data.content || 'Research failed');
                 setIsResearching(false);
               } else {
                 setResearchSteps((prev) => [...prev, data]);
@@ -95,6 +98,7 @@ export function ResearchView({ session, initialMessages }: ResearchViewProps) {
       }
     } catch (error) {
       console.error('Research error:', error);
+      setResearchError(error instanceof Error ? error.message : 'Failed to complete research');
       toast.error('Failed to complete research');
     } finally {
       setIsResearching(false);
@@ -217,12 +221,27 @@ export function ResearchView({ session, initialMessages }: ResearchViewProps) {
               <div className="p-6 max-w-4xl mx-auto">
                 {!researchReport ? (
                   <div className="space-y-4">
-                    {isResearching && researchSteps.length > 0 ? (
+                    {researchError ? (
+                      <Card className="p-8 text-center border-destructive">
+                        <AlertCircle className="w-12 h-12 mx-auto text-destructive mb-4" />
+                        <div>
+                          <h3 className="font-semibold mb-2">Research Failed</h3>
+                          <p className="text-sm text-muted-foreground mb-4">{researchError}</p>
+                          <Button onClick={startResearch} size="lg" variant="outline">
+                            Try Again
+                          </Button>
+                        </div>
+                      </Card>
+                    ) : isResearching && researchSteps.length > 0 ? (
                       <div className="space-y-3">
                         {researchSteps.map((step, i) => (
                           <Card key={i} className="p-4">
                             <div className="flex items-start gap-3">
-                              <Loader2 className="w-4 h-4 animate-spin mt-0.5" />
+                              {step.type === 'error' ? (
+                                <AlertCircle className="w-4 h-4 text-destructive mt-0.5" />
+                              ) : (
+                                <Loader2 className="w-4 h-4 animate-spin mt-0.5" />
+                              )}
                               <div>
                                 <p className="text-sm font-medium capitalize">{step.type}</p>
                                 <p className="text-sm text-muted-foreground">{step.content}</p>

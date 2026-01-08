@@ -3,6 +3,8 @@
  *
  * Coordinates analysis from multiple AI models (ChatGPT, Claude) to critique
  * and debate the Gemini Deep Research report.
+ *
+ * Note: If an API key is missing, that agent will be skipped.
  */
 
 import Anthropic from '@anthropic-ai/sdk';
@@ -29,22 +31,27 @@ interface DebateRound {
 }
 
 export class CouncilService {
-  private anthropic: Anthropic;
-  private openai: OpenAI;
+  private anthropic: Anthropic | null;
+  private openai: OpenAI | null;
+  private hasAnthropic: boolean;
+  private hasOpenAI: boolean;
 
   constructor() {
     const anthropicKey = process.env.ANTHROPIC_API_KEY;
     const openaiKey = process.env.OPENAI_API_KEY;
 
-    if (!anthropicKey) {
-      throw new Error('ANTHROPIC_API_KEY environment variable is required');
+    this.hasAnthropic = !!anthropicKey;
+    this.hasOpenAI = !!openaiKey;
+
+    if (!this.hasAnthropic) {
+      console.warn('ANTHROPIC_API_KEY not found - Claude analysis will be skipped');
     }
-    if (!openaiKey) {
-      throw new Error('OPENAI_API_KEY environment variable is required');
+    if (!this.hasOpenAI) {
+      console.warn('OPENAI_API_KEY not found - ChatGPT analysis will be skipped');
     }
 
-    this.anthropic = new Anthropic({ apiKey: anthropicKey });
-    this.openai = new OpenAI({ apiKey: openaiKey });
+    this.anthropic = anthropicKey ? new Anthropic({ apiKey: anthropicKey }) : null;
+    this.openai = openaiKey ? new OpenAI({ apiKey: openaiKey }) : null;
   }
 
   /**
@@ -56,14 +63,21 @@ export class CouncilService {
   }> {
     const { researchReport, thesis } = options;
 
-    // Phase 1: Individual analyses
-    const analyses = await Promise.all([
-      this.getSkepticAnalysis(thesis, researchReport),
-      this.getRiskAssessment(thesis, researchReport),
-      this.getBullCaseAnalysis(thesis, researchReport),
-    ]);
+    // Phase 1: Individual analyses (only for available agents)
+    const analysisPromises: Promise<AgentAnalysis>[] = [];
 
-    // Phase 2: Facilitate debate
+    if (this.hasOpenAI) {
+      analysisPromises.push(this.getSkepticAnalysis(thesis, researchReport));
+      analysisPromises.push(this.getBullCaseAnalysis(thesis, researchReport));
+    }
+
+    if (this.hasAnthropic) {
+      analysisPromises.push(this.getRiskAssessment(thesis, researchReport));
+    }
+
+    const analyses = await Promise.all(analysisPromises);
+
+    // Phase 2: Facilitate debate (only if we have multiple analyses)
     const debate = await this.facilitateDebate(thesis, researchReport, analyses);
 
     return { analyses, debate };
@@ -73,6 +87,8 @@ export class CouncilService {
    * ChatGPT as the Skeptic - challenges the research
    */
   private async getSkepticAnalysis(thesis: string, researchReport: string): Promise<AgentAnalysis> {
+    if (!this.openai) throw new Error('OpenAI not available');
+
     const prompt = `You are the Investment Council's SKEPTIC. Your role is to critically challenge investment research and identify weaknesses, biases, and missing information.
 
 ORIGINAL THESIS:
@@ -112,7 +128,7 @@ Provide a comprehensive skeptical critique covering:
 Be rigorous, critical, and don't hold back. Your job is to stress-test this investment idea.`;
 
     const response = await this.openai.chat.completions.create({
-      model: 'o3-mini',
+      model: 'gpt-4o',
       messages: [{ role: 'user', content: prompt }],
       max_tokens: 4000,
     });
@@ -129,6 +145,8 @@ Be rigorous, critical, and don't hold back. Your job is to stress-test this inve
    * Claude as Risk Officer - assesses risks comprehensively
    */
   private async getRiskAssessment(thesis: string, researchReport: string): Promise<AgentAnalysis> {
+    if (!this.anthropic) throw new Error('Anthropic not available');
+
     const prompt = `You are the Investment Council's RISK OFFICER. Your role is to provide comprehensive risk assessment and identify potential downside scenarios.
 
 ORIGINAL THESIS:
@@ -191,6 +209,8 @@ Be thorough and specific. Risk management is your primary concern.`;
    * Gemini/ChatGPT as Bull Case Advocate - argues for the investment
    */
   private async getBullCaseAnalysis(thesis: string, researchReport: string): Promise<AgentAnalysis> {
+    if (!this.openai) throw new Error('OpenAI not available');
+
     const prompt = `You are the Investment Council's BULL CASE ADVOCATE. Your role is to articulate the strongest possible case for this investment, while being intellectually honest.
 
 ORIGINAL THESIS:
@@ -232,7 +252,7 @@ Provide a compelling bull case analysis covering:
 Be compelling but realistic. Don't overpromise - a credible bull case is more convincing than hype.`;
 
     const response = await this.openai.chat.completions.create({
-      model: 'o3-mini',
+      model: 'gpt-4o',
       messages: [{ role: 'user', content: prompt }],
       max_tokens: 4000,
     });
@@ -260,54 +280,69 @@ Be compelling but realistic. Don't overpromise - a credible bull case is more co
     const riskAnalysis = analyses.find(a => a.role === 'Risk Officer')?.analysis || '';
     const bullAnalysis = analyses.find(a => a.role === 'Bull Case Advocate')?.analysis || '';
 
-    // Round 1: Skeptic responds to Bull Case
-    const round1 = await this.debateRound(
-      thesis,
-      researchReport,
-      'Skeptic',
-      `BULL CASE ARGUMENT:
+    // Only run debate if we have at least 2 analyses
+    if (analyses.length < 2) {
+      return debate;
+    }
+
+    // Round 1: Skeptic responds to Bull Case (if both exist)
+    if (bullAnalysis && skepticAnalysis && this.hasOpenAI) {
+      const round1 = await this.debateRound(
+        thesis,
+        researchReport,
+        'Skeptic',
+        `BULL CASE ARGUMENT:
 ${bullAnalysis.substring(0, 2000)}...
 
 Respond to the bull case. Point out flaws, counter-arguments, and where the bull case may be too optimistic. Be specific.`,
-      'chatgpt'
-    );
+        'chatgpt'
+      );
 
-    debate.push({
-      round: 1,
-      messages: [
-        { agent: 'bull-advocate', content: 'Bull case presented (see analysis above)' },
-        { agent: 'skeptic', content: round1 },
-      ],
-    });
+      debate.push({
+        round: 1,
+        messages: [
+          { agent: 'bull-advocate', content: 'Bull case presented (see analysis above)' },
+          { agent: 'skeptic', content: round1 },
+        ],
+      });
+    }
 
-    // Round 2: Risk Officer responds to both sides
-    const round2 = await this.debateRound(
-      thesis,
-      researchReport,
-      'Risk Officer',
-      `DEBATE SO FAR:
+    // Round 2: Risk Officer responds to both sides (if available)
+    if (riskAnalysis && this.hasAnthropic) {
+      const round1Content = debate.find(r => r.round === 1)?.messages[1]?.content || '';
+
+      const round2 = await this.debateRound(
+        thesis,
+        researchReport,
+        'Risk Officer',
+        `DEBATE SO FAR:
 
 BULL CASE: ${bullAnalysis.substring(0, 1500)}...
 
-SKEPTIC'S RESPONSE: ${round1.substring(0, 1500)}...
+SKEPTIC'S RESPONSE: ${round1Content.substring(0, 1500)}...
 
 As the Risk Officer, weigh both sides. What risks does each side overlook? What's your synthesized view of the risk/reward? Provide your balanced assessment.`,
-      'claude'
-    );
+        'claude'
+      );
 
-    debate.push({
-      round: 2,
-      messages: [
-        { agent: 'risk-officer', content: round2 },
-      ],
-    });
+      debate.push({
+        round: 2,
+        messages: [
+          { agent: 'risk-officer', content: round2 },
+        ],
+      });
+    }
 
     // Round 3: Final synthesis
-    const round3 = await this.debateRound(
-      thesis,
-      researchReport,
-      'Council Synthesizer',
-      `COUNCIL DEBATE SUMMARY:
+    if (this.hasOpenAI) {
+      const round2Content = debate.find(r => r.round === 2)?.messages[0]?.content || '';
+      const round1Content = debate.find(r => r.round === 1)?.messages[1]?.content || '';
+
+      const round3 = await this.debateRound(
+        thesis,
+        researchReport,
+        'Council Synthesizer',
+        `COUNCIL DEBATE SUMMARY:
 
 BULL CASE: ${bullAnalysis.substring(0, 1000)}...
 
@@ -316,9 +351,9 @@ SKEPTIC'S CRITIQUE: ${skepticAnalysis.substring(0, 1000)}...
 RISK OFFICER'S ASSESSMENT: ${riskAnalysis.substring(0, 1000)}...
 
 DEBATE EXCHANGE:
-${round1.substring(0, 1000)}...
+${round1Content.substring(0, 1000)}...
 
-${round2.substring(0, 1000)}...
+${round2Content.substring(0, 1000)}...
 
 Provide a final synthesis that:
 
@@ -329,15 +364,16 @@ Provide a final synthesis that:
 5. Suggests a stance (invest/pass/watch) with rationale
 
 This synthesis will inform the final investment decision. Be balanced and thorough.`,
-      'chatgpt'
-    );
+        'chatgpt'
+      );
 
-    debate.push({
-      round: 3,
-      messages: [
-        { agent: 'synthesizer', content: round3 },
-      ],
-    });
+      debate.push({
+        round: 3,
+        messages: [
+          { agent: 'synthesizer', content: round3 },
+        ],
+      });
+    }
 
     return debate;
   }
@@ -358,13 +394,15 @@ RESEARCH REPORT SUMMARY: ${researchReport.substring(0, 1000)}...
 ${prompt}`;
 
     if (model === 'chatgpt') {
+      if (!this.openai) throw new Error('OpenAI not available');
       const response = await this.openai.chat.completions.create({
-        model: 'o3-mini',
+        model: 'gpt-4o',
         messages: [{ role: 'user', content: fullPrompt }],
         max_tokens: 3000,
       });
       return response.choices[0]?.message?.content || 'No response';
     } else {
+      if (!this.anthropic) throw new Error('Anthropic not available');
       const response = await this.anthropic.messages.create({
         model: 'claude-sonnet-4-20250514',
         max_tokens: 3000,

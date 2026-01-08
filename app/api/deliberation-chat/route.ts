@@ -40,6 +40,11 @@ export async function POST(req: NextRequest) {
         try {
           const researchContext = context || session.research_report?.substring(0, 3000) || 'No research available';
 
+          // Include council analyses in context
+          const councilContext = session.council_analyses && session.council_analyses.length > 0
+            ? `\n\nCOUNCIL ANALYSES:\n${session.council_analyses.map((a: any) => `${a.role}: ${a.analysis?.substring(0, 500)}`).join('\n\n')}`
+            : '';
+
           const systemPrompt = `You are an Investment Council Assistant helping the user deliberate on an investment opportunity.
 
 The user has reviewed deep research and a council debate. Your role is to:
@@ -50,12 +55,12 @@ The user has reviewed deep research and a council debate. Your role is to:
 4. Be balanced - don't just confirm their biases
 
 RESEARCH CONTEXT:
-${researchContext}
+${researchContext}${councilContext}
 
 Keep responses concise and focused. Use markdown for formatting.`;
 
           const response = await openai.chat.completions.create({
-            model: 'o3-mini',
+            model: 'gpt-4o',
             messages: [
               { role: 'system', content: systemPrompt },
               { role: 'user', content: message },

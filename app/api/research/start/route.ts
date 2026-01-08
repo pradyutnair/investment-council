@@ -53,6 +53,11 @@ export async function POST(req: NextRequest) {
               const data = JSON.stringify({ type: 'complete', report: step.report });
               controller.enqueue(encoder.encode(`data: ${data}\n\n`));
               break;
+            } else if (step.type === 'error') {
+              // Send error event - don't save report
+              const data = JSON.stringify({ type: 'error', content: step.content });
+              controller.enqueue(encoder.encode(`data: ${data}\n\n`));
+              break;
             } else {
               // Send thought step
               const data = JSON.stringify(step);

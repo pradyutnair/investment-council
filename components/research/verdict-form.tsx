@@ -56,7 +56,7 @@ export function VerdictForm({ sessionId, onVerdictSet }: VerdictFormProps) {
     <div className="space-y-4">
       <div>
         <Label>Your Investment Decision</Label>
-        <div className="grid grid-cols-4 gap-2 mt-2">
+        <div className="grid grid-cols-3 gap-2 mt-2">
           <Button
             variant={selectedVerdict === 'invest' ? 'default' : 'outline'}
             onClick={() => setSelectedVerdict('invest')}
@@ -81,14 +81,6 @@ export function VerdictForm({ sessionId, onVerdictSet }: VerdictFormProps) {
             disabled={isSubmitting}
           >
             <span className="text-sm font-medium">Watch</span>
-          </Button>
-          <Button
-            variant={selectedVerdict === 'needs_more_research' ? 'outline' : 'outline'}
-            onClick={() => setSelectedVerdict('needs_more_research')}
-            className="h-auto py-3 flex flex-col gap-1"
-            disabled={isSubmitting}
-          >
-            <span className="text-sm font-medium">More Research</span>
           </Button>
         </div>
       </div>

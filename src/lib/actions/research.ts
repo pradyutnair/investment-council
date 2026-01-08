@@ -99,7 +99,7 @@ export async function addCouncilAnalysis(sessionId: string, agentName: string, a
   // First get the current session
   const { data: session } = await supabase
     .from('research_sessions')
-    .select('council_analyses')
+    .select('council_analyses, council_started_at')
     .eq('id', sessionId)
     .single()
 

@@ -5,29 +5,35 @@
  * Documentation: https://ai.google.dev/gemini-api/docs/deep-research
  */
 
+import { GoogleGenAI } from '@google/genai';
+import type { ContextFile } from '@/src/types/deals';
+
 interface ResearchOptions {
   thesis: string;
   dealId?: string;
+  companyName?: string;
+  ticker?: string;
+  contextFiles?: ContextFile[];
 }
 
 interface ResearchStep {
-  type: 'thinking' | 'searching' | 'reading' | 'analyzing' | 'progress';
+  type: 'thinking' | 'searching' | 'reading' | 'analyzing' | 'progress' | 'error';
   content: string;
   timestamp: string;
 }
 
 export class GeminiResearchService {
-  private apiKey: string;
+  private client: GoogleGenAI | null = null;
 
-  constructor(apiKey?: string) {
-    this.apiKey = apiKey || process.env.GOOGLE_GEMINI_API_KEY || '';
-  }
-
-  private getApiKey(): string {
-    if (!this.apiKey) {
-      throw new Error('GOOGLE_GEMINI_API_KEY environment variable is required');
+  private getClient(): GoogleGenAI {
+    if (!this.client) {
+      const apiKey = process.env.GOOGLE_GEMINI_API_KEY;
+      if (!apiKey) {
+        throw new Error('GOOGLE_GEMINI_API_KEY not found in environment');
+      }
+      this.client = new GoogleGenAI({ apiKey });
     }
-    return this.apiKey;
+    return this.client;
   }
 
   /**
@@ -98,38 +104,41 @@ Think critically about the thesis and don't just confirm bias - actively seek di
   }
 
   private async *runDeepResearch(prompt: string): AsyncGenerator<ResearchStep | { type: 'complete'; report: string }> {
-    const { GoogleGenAI } = await import('@google/genai');
-    const client = new GoogleGenAI({ apiKey: this.getApiKey() });
-
     yield {
       type: 'thinking',
       content: 'Starting deep research with Gemini...',
       timestamp: new Date().toISOString(),
     };
 
-    // Create the interaction for deep research
+    const client = this.getClient();
+
+    // Use the official SDK for Deep Research
     const interaction = await client.interactions.create({
       input: prompt,
       agent: 'deep-research-pro-preview-12-2025',
       background: true,
     });
 
+    const interactionId = interaction.id;
+
     yield {
       type: 'thinking',
-      content: `Deep research initiated (ID: ${interaction.id}). Waiting for completion...`,
+      content: `Deep research initiated (ID: ${interactionId}). Waiting for completion...`,
       timestamp: new Date().toISOString(),
     };
 
     // Poll for completion
     let lastStatus = '';
     const POLL_INTERVAL = 10000; // 10 seconds
+    const MAX_POLL_TIME = 600000; // 10 minutes max
+    const startTime = Date.now();
 
-    while (true) {
-      const result = await client.interactions.get(interaction.id);
+    while (Date.now() - startTime < MAX_POLL_TIME) {
+      const result = await client.interactions.get(interactionId!);
 
       // Emit status updates
       if (result.status !== lastStatus) {
-        lastStatus = result.status;
+        lastStatus = result.status || '';
         yield {
           type: 'progress',
           content: `Research status: ${result.status}`,
@@ -145,37 +154,39 @@ Think critically about the thesis and don't just confirm bias - actively seek di
         };
 
         // Get the final output
-        const finalOutput = result.outputs[result.outputs.length - 1];
-        const report = finalOutput?.text || 'No report generated';
+        const outputs = result.outputs ?? [];
+        const finalOutput = outputs[outputs.length - 1];
+        const report = (finalOutput as any)?.text || 'No report generated';
 
         yield { type: 'complete', report };
-        break;
+        return;
       } else if (result.status === 'failed') {
-        throw new Error(result.error || 'Deep research failed');
+        throw new Error((result as any).error || 'Deep research failed');
       }
 
       // Wait before next poll
       await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL));
     }
+
+    // Timeout - fall back to standard research
+    throw new Error('Deep research timed out after 10 minutes');
   }
 
   private async *runStandardResearch(prompt: string): AsyncGenerator<ResearchStep | { type: 'complete'; report: string }> {
     yield {
       type: 'thinking',
-      content: 'Initializing research analysis with Gemini 2.0...',
+      content: 'Initializing research analysis with Gemini Flash...',
       timestamp: new Date().toISOString(),
     };
 
-    const { GoogleGenAI } = await import('@google/genai');
-    const client = new GoogleGenAI({ apiKey: this.getApiKey() });
+    const client = this.getClient();
 
-    const model = client.getGenerativeModel({
-      model: 'gemini-2.0-flash-thinking-exp-01-21',
+    const response = await client.models.generateContent({
+      model: 'gemini-2.0-flash',
+      contents: prompt,
     });
 
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    const report = response.text() || 'No report generated';
+    const report = response.text || 'No report generated';
 
     yield {
       type: 'analyzing',
