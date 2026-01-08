@@ -33,7 +33,7 @@ export function ChatInput({ onSendMessage, isLoading }: ChatInputProps) {
     .join(' ')
 
   return (
-    <form onSubmit={handleSubmit} className="border-t border-border/50 p-4 bg-background">
+    <form onSubmit={handleSubmit} className="border-t border-border/40 p-4 bg-background">
       <div className="max-w-3xl mx-auto">
         <div className="flex gap-2">
           <input
@@ -42,18 +42,18 @@ export function ChatInput({ onSendMessage, isLoading }: ChatInputProps) {
             onChange={(e) => setInput(e.target.value)}
             placeholder="Ask about an investment..."
             disabled={isLoading}
-            className="flex-1 h-10 px-3 text-sm rounded-md border border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex-1 h-10 px-3.5 text-sm rounded-lg border border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
           />
           <Button
             type="submit"
             disabled={isLoading || !input.trim()}
-            className="h-10 px-3"
+            className="h-10 px-3 rounded-lg"
             size="icon"
           >
             <ArrowUp className="w-4 h-4" />
           </Button>
         </div>
-        <p className="text-xs text-muted-foreground mt-2">
+        <p className="text-xs text-muted-foreground/80 mt-2 px-1">
           {agentLabel}
         </p>
       </div>

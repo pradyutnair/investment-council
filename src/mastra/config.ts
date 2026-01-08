@@ -37,5 +37,5 @@ export const openaiProvider = createOpenAI({
 export const config = {
   fmpApiKey: requiredEnvVars.FMP_API_KEY,
   postgresConnectionString: optionalEnvVars.POSTGRES_CONNECTION_STRING,
-  openaiModelId: 'gpt-5.2',
+  openaiModelId: 'gpt-4o',
 } as const;

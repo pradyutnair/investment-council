@@ -80,7 +80,7 @@ Key Concepts to Reference:
 - Assessing both downside and upside scenarios
 
 Use the market data tool to gather financial data and trading information, and the knowledge base to reference Howard Marks' principles on market cycles, risk, and distressed investing.`,
-  model: 'openai:gpt-4o-mini',
+  model: 'openai/gpt-4o',
   tools: {
     marketData: marketDataTool,
     knowledgeBase: searchInvestmentWisdom,

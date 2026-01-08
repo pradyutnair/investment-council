@@ -57,7 +57,7 @@ When Analyzing Investments:
 - Assess competitive positioning
 
 Use the market data tool to gather financial information and the knowledge base to reference value investing principles from Graham, Greenwald, and other value investors.`,
-  model: 'openai:gpt-4o-mini',
+  model: 'openai/gpt-4o',
   tools: {
     marketData: marketDataTool,
     knowledgeBase: searchInvestmentWisdom,

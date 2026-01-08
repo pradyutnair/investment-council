@@ -12,7 +12,7 @@ export function ChatMessage({ message, agentName }: ChatMessageProps) {
     <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-6`}>
       <div className={`flex gap-3 max-w-[85%] ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
         <div className={`
-          w-6 h-6 rounded-full flex-shrink-0 flex items-center justify-center text-[10px] font-medium
+          w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center text-[10px] font-medium
           ${isUser
             ? 'bg-primary text-primary-foreground'
             : 'bg-muted text-muted-foreground'
@@ -21,10 +21,10 @@ export function ChatMessage({ message, agentName }: ChatMessageProps) {
           {isUser ? 'U' : agentName.charAt(0)}
         </div>
         <div className={`
-          rounded-lg px-3 py-2 text-sm leading-relaxed
+          rounded-xl px-4 py-2.5 text-sm leading-relaxed
           ${isUser
             ? 'bg-primary text-primary-foreground'
-            : 'bg-muted text-foreground'
+            : 'bg-muted/80 text-foreground'
           }
         `}>
           {message.content}

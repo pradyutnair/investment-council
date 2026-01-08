@@ -66,7 +66,7 @@ When Analyzing Investments:
 - Look for regulatory and deal risks
 
 Use the market data tool to gather information on corporate structure and trading data, and the knowledge base to reference Greenblatt's principles and case studies.`,
-  model: 'openai:gpt-4o-mini',
+  model: 'openai/gpt-4o',
   tools: {
     marketData: marketDataTool,
     knowledgeBase: searchInvestmentWisdom,

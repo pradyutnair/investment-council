@@ -67,3 +67,49 @@
     font-feature-settings: "rlig" 1, "calt" 1;
   }
 }
+
+@layer utilities {
+  /* Financial terminal typography */
+  .font-serif {
+    font-family: var(--font-merriweather);
+  }
+  .font-mono {
+    font-family: var(--font-jetbrains-mono);
+  }
+  
+  /* Report-specific styling */
+  .report-content {
+    font-family: var(--font-merriweather);
+    @apply text-base leading-relaxed;
+  }
+  
+  .report-content h1 {
+    @apply text-3xl font-bold mb-6 mt-8 border-b pb-3;
+  }
+  
+  .report-content h2 {
+    @apply text-2xl font-semibold mb-4 mt-6;
+  }
+  
+  .report-content h3 {
+    @apply text-xl font-medium mb-3 mt-4;
+  }
+  
+  .report-content p {
+    @apply mb-4;
+  }
+  
+  .report-content ul, .report-content ol {
+    @apply mb-4 ml-6;
+  }
+  
+  .report-content li {
+    @apply mb-2;
+  }
+  
+  /* Data table styling */
+  .data-table {
+    font-family: var(--font-jetbrains-mono);
+    @apply text-sm;
+  }
+}

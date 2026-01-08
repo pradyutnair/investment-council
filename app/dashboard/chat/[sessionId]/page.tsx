@@ -66,14 +66,14 @@ export default function ChatSessionPage() {
       const reader = response.body?.getReader()
       const decoder = new TextDecoder()
       let assistantContent = ''
-      let tempAssistantMessage: ChatMessageType | null = null
+      const tempAssistantId = `temp-assistant-${Date.now()}`
 
       if (reader) {
         while (true) {
           const { done, value } = await reader.read()
           if (done) break
 
-          const chunk = decoder.decode(value)
+          const chunk = decoder.decode(value, { stream: true })
           const lines = chunk.split('\n')
 
           for (const line of lines) {
@@ -86,24 +86,23 @@ export default function ChatSessionPage() {
                 if (parsed.text) {
                   assistantContent += parsed.text
 
-                  if (!tempAssistantMessage) {
-                    const newMessage: ChatMessageType = {
-                      id: `temp-assistant-${Date.now()}`,
-                      session_id: sessionId,
-                      role: 'assistant',
-                      content: assistantContent,
-                      created_at: new Date().toISOString(),
-                    }
-                    tempAssistantMessage = newMessage
-                    setMessages(prev => [...prev, newMessage])
-                  } else {
-                    tempAssistantMessage.content = assistantContent
-                    setMessages(prev => {
-                      const newMessages = [...prev]
-                      newMessages[newMessages.length - 1] = tempAssistantMessage!
-                      return newMessages
-                    })
+                  const newMessage: ChatMessageType = {
+                    id: tempAssistantId,
+                    session_id: sessionId,
+                    role: 'assistant',
+                    content: assistantContent,
+                    created_at: new Date().toISOString(),
                   }
+
+                  setMessages(prev => {
+                    const lastMessage = prev[prev.length - 1]
+                    if (lastMessage?.id === tempAssistantId) {
+                      // Replace with new message object to trigger re-render
+                      return [...prev.slice(0, -1), newMessage]
+                    } else {
+                      return [...prev, newMessage]
+                    }
+                  })
                 }
               } catch (e) {
                 // Skip invalid JSON
@@ -143,13 +142,13 @@ export default function ChatSessionPage() {
   }
 
   return (
-    <div className="flex-1 flex flex-col">
+    <div className="flex-1 flex flex-col min-h-0">
       {/* Header */}
-      <header className="border-b border-border/50 px-6 py-4 bg-background">
+      <header className="flex-shrink-0 border-b border-border/40 px-6 py-3.5 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="flex items-center justify-between max-w-4xl mx-auto">
-          <div className="flex items-center gap-3">
-            <h1 className="text-sm font-medium">Investment Council</h1>
-            <span className="text-muted-foreground">/</span>
+          <div className="flex items-center gap-2">
+            <h1 className="text-sm font-semibold tracking-tight">Investment Committee</h1>
+            <span className="text-muted-foreground/60">/</span>
             <span className="text-sm text-muted-foreground truncate max-w-[200px]">{getTitle()}</span>
           </div>
           <AgentSelector />
@@ -157,7 +156,7 @@ export default function ChatSessionPage() {
       </header>
 
       {/* Messages Area */}
-      <ScrollArea className="flex-1">
+      <ScrollArea className="flex-1 min-h-0">
         <div className="max-w-3xl mx-auto py-8 px-6">
           {messages.map((msg) => (
             <ChatMessage
@@ -170,7 +169,9 @@ export default function ChatSessionPage() {
       </ScrollArea>
 
       {/* Input */}
-      <ChatInput onSendMessage={handleSendMessage} isLoading={isLoading} />
+      <div className="flex-shrink-0">
+        <ChatInput onSendMessage={handleSendMessage} isLoading={isLoading} />
+      </div>
     </div>
   )
 }
