@@ -6,12 +6,102 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Loader2, FileText, MessageSquare, Users, CheckCircle2, AlertCircle, ArrowRight, Brain } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { 
+  Loader2, FileText, MessageSquare, Users, CheckCircle2, AlertCircle, ArrowRight, Brain,
+  TrendingUp, TrendingDown, ShieldAlert, Sparkles, AlertTriangle, ChevronDown
+} from 'lucide-react';
 import { ChatInterface } from './chat-interface';
 import { FormattedMarkdown } from './formatted-markdown';
 import { VerdictForm } from './verdict-form';
 import type { ResearchSession } from '@/lib/actions/research';
 import { cn } from '@/lib/utils';
+
+// Role configuration with icons, colors, and descriptions
+const ROLE_CONFIG: Record<string, { 
+  icon: React.ReactNode; 
+  label: string;
+  description: string;
+  color: string;
+  bgColor: string;
+}> = {
+  'bull': {
+    icon: <TrendingUp className="w-5 h-5" />,
+    label: 'Bull Case',
+    description: 'Advocates for the investment opportunity',
+    color: 'text-emerald-600 dark:text-emerald-400',
+    bgColor: 'bg-emerald-500/10 border-emerald-500/20',
+  },
+  'value': {
+    icon: <TrendingUp className="w-5 h-5" />,
+    label: 'Value Investor',
+    description: 'Focuses on intrinsic value and margin of safety',
+    color: 'text-emerald-600 dark:text-emerald-400',
+    bgColor: 'bg-emerald-500/10 border-emerald-500/20',
+  },
+  'skeptic': {
+    icon: <TrendingDown className="w-5 h-5" />,
+    label: 'Skeptic',
+    description: 'Challenges assumptions and highlights risks',
+    color: 'text-red-600 dark:text-red-400',
+    bgColor: 'bg-red-500/10 border-red-500/20',
+  },
+  'bear': {
+    icon: <TrendingDown className="w-5 h-5" />,
+    label: 'Bear Case',
+    description: 'Argues against the investment',
+    color: 'text-red-600 dark:text-red-400',
+    bgColor: 'bg-red-500/10 border-red-500/20',
+  },
+  'risk': {
+    icon: <ShieldAlert className="w-5 h-5" />,
+    label: 'Risk Officer',
+    description: 'Evaluates downside scenarios and risk factors',
+    color: 'text-amber-600 dark:text-amber-400',
+    bgColor: 'bg-amber-500/10 border-amber-500/20',
+  },
+  'risk officer': {
+    icon: <ShieldAlert className="w-5 h-5" />,
+    label: 'Risk Officer',
+    description: 'Evaluates downside scenarios and risk factors',
+    color: 'text-amber-600 dark:text-amber-400',
+    bgColor: 'bg-amber-500/10 border-amber-500/20',
+  },
+  'special situations': {
+    icon: <Sparkles className="w-5 h-5" />,
+    label: 'Special Situations',
+    description: 'Analyzes event-driven opportunities',
+    color: 'text-purple-600 dark:text-purple-400',
+    bgColor: 'bg-purple-500/10 border-purple-500/20',
+  },
+  'distressed': {
+    icon: <AlertTriangle className="w-5 h-5" />,
+    label: 'Distressed Analyst',
+    description: 'Specializes in distressed and turnaround situations',
+    color: 'text-orange-600 dark:text-orange-400',
+    bgColor: 'bg-orange-500/10 border-orange-500/20',
+  },
+};
+
+function getRoleConfig(role: string | undefined | null) {
+  if (!role) {
+    return {
+      icon: <Users className="w-5 h-5" />,
+      label: 'Analyst',
+      description: 'Council member',
+      color: 'text-blue-600 dark:text-blue-400',
+      bgColor: 'bg-blue-500/10 border-blue-500/20',
+    };
+  }
+  const normalizedRole = role.toLowerCase();
+  return ROLE_CONFIG[normalizedRole] || {
+    icon: <Users className="w-5 h-5" />,
+    label: role,
+    description: 'Council member',
+    color: 'text-blue-600 dark:text-blue-400',
+    bgColor: 'bg-blue-500/10 border-blue-500/20',
+  };
+}
 
 interface ResearchViewProps {
   session: ResearchSession;
@@ -271,24 +361,22 @@ export function ResearchView({ session, initialMessages }: ResearchViewProps) {
                   <div className="space-y-6">
                     <div>
                       <h3 className="text-[13px] font-medium text-muted-foreground uppercase tracking-wider mb-4">Council Analyses</h3>
-                      <div className="space-y-4">
-                        {councilAnalyses.map((analysis: any, i: number) => (
-                          <div key={i} className="bg-card border border-border rounded-xl p-5">
-                            <div className="flex items-center gap-2 mb-4">
-                              <Badge variant="secondary" className="text-[11px] font-medium">{analysis.role}</Badge>
-                              <span className="text-[12px] text-muted-foreground">
-                                {analysis.agent === 'chatgpt' ? 'ChatGPT' : analysis.agent === 'claude' ? 'Claude' : 'Gemini'}
-                              </span>
-                            </div>
-                            <div className="text-sm">
-                              <FormattedMarkdown content={analysis.analysis} />
-                            </div>
-                          </div>
-                        ))}
+                      <div className="space-y-3">
+                        {councilAnalyses.map((analysis: any, i: number) => {
+                          const roleConfig = getRoleConfig(analysis.role);
+                          return (
+                            <CouncilAnalysisCard 
+                              key={i} 
+                              analysis={analysis} 
+                              roleConfig={roleConfig}
+                              defaultOpen={i === 0}
+                            />
+                          );
+                        })}
                         {isCouncilRunning && (
-                          <div className="flex items-center gap-3 p-4 bg-muted/50 rounded-xl">
+                          <div className="flex items-center gap-3 p-4 bg-muted/50 rounded-xl border border-border">
                             <Loader2 className="w-4 h-4 animate-spin" />
-                            <span className="text-[13px]">Council analyzing...</span>
+                            <span className="text-[14px]">Council analyzing...</span>
                           </div>
                         )}
                       </div>
@@ -297,19 +385,42 @@ export function ResearchView({ session, initialMessages }: ResearchViewProps) {
                     {councilDebate.length > 0 && (
                       <div>
                         <h3 className="text-[13px] font-medium text-muted-foreground uppercase tracking-wider mb-4">Council Debate</h3>
-                        <div className="space-y-4">
+                        <div className="space-y-3">
                           {councilDebate.map((round: any, i: number) => (
-                            <div key={i} className="bg-card border border-border rounded-xl p-5">
-                              <Badge variant="outline" className="mb-4 text-[11px]">Round {round.round}</Badge>
-                              <div className="space-y-4">
-                                {round.messages.map((msg: any, j: number) => (
-                                  <div key={j} className="border-l-2 border-border pl-4">
-                                    <p className="text-[13px] font-medium capitalize mb-1">{msg.agent}</p>
-                                    <p className="text-[13px] text-muted-foreground">{msg.content}</p>
+                            <Collapsible key={i} defaultOpen={i === 0}>
+                              <CollapsibleTrigger className="w-full">
+                                <div className="flex items-center justify-between p-4 bg-card border border-border rounded-xl hover:bg-muted/30 transition-colors">
+                                  <div className="flex items-center gap-3">
+                                    <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center">
+                                      <MessageSquare className="w-4 h-4 text-muted-foreground" />
+                                    </div>
+                                    <div className="text-left">
+                                      <p className="text-[14px] font-medium">Debate Round {round.round}</p>
+                                      <p className="text-[12px] text-muted-foreground">{round.messages?.length || 0} exchanges</p>
+                                    </div>
                                   </div>
-                                ))}
-                              </div>
-                            </div>
+                                  <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                                </div>
+                              </CollapsibleTrigger>
+                              <CollapsibleContent>
+                                <div className="mt-2 p-4 bg-card border border-border rounded-xl space-y-4">
+                                  {round.messages?.map((msg: any, j: number) => {
+                                    const msgRoleConfig = getRoleConfig(msg.agent || msg.role || 'analyst');
+                                    return (
+                                      <div key={j} className={cn("border-l-2 pl-4", msgRoleConfig.color.replace('text-', 'border-'))}>
+                                        <div className="flex items-center gap-2 mb-2">
+                                          <span className={cn("w-4 h-4", msgRoleConfig.color)}>{msgRoleConfig.icon}</span>
+                                          <p className={cn("text-[13px] font-medium", msgRoleConfig.color)}>{msgRoleConfig.label}</p>
+                                        </div>
+                                        <div className="text-sm">
+                                          <FormattedMarkdown content={msg.content || ''} />
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </CollapsibleContent>
+                            </Collapsible>
                           ))}
                         </div>
                       </div>
@@ -360,5 +471,65 @@ export function ResearchView({ session, initialMessages }: ResearchViewProps) {
         </div>
       )}
     </div>
+  );
+}
+
+// Collapsible card component for each council analysis
+function CouncilAnalysisCard({ 
+  analysis, 
+  roleConfig, 
+  defaultOpen 
+}: { 
+  analysis: any; 
+  roleConfig: ReturnType<typeof getRoleConfig>;
+  defaultOpen: boolean;
+}) {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
+  
+  const agentName = analysis.agent === 'chatgpt' ? 'GPT-4' : 
+                    analysis.agent === 'claude' ? 'Claude' : 
+                    analysis.agent === 'gemini' ? 'Gemini' : 
+                    analysis.agent || 'AI';
+
+  return (
+    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+      <CollapsibleTrigger className="w-full group">
+        <div className={cn(
+          "flex items-center justify-between p-4 rounded-xl border transition-all duration-200",
+          roleConfig.bgColor,
+          "hover:brightness-95 dark:hover:brightness-110"
+        )}>
+          <div className="flex items-center gap-3">
+            <div className={cn(
+              "w-10 h-10 rounded-lg flex items-center justify-center",
+              roleConfig.color,
+              "bg-white/50 dark:bg-black/20"
+            )}>
+              {roleConfig.icon}
+            </div>
+            <div className="text-left">
+              <div className="flex items-center gap-2">
+                <p className={cn("text-[15px] font-semibold", roleConfig.color)}>
+                  {roleConfig.label}
+                </p>
+                <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 bg-background/50">
+                  {agentName}
+                </Badge>
+              </div>
+              <p className="text-[12px] text-muted-foreground">{roleConfig.description}</p>
+            </div>
+          </div>
+          <ChevronDown className={cn(
+            "w-5 h-5 text-muted-foreground transition-transform duration-200",
+            isOpen && "rotate-180"
+          )} />
+        </div>
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        <div className="mt-2 p-5 bg-card border border-border rounded-xl">
+          <FormattedMarkdown content={analysis.analysis} />
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
   );
 }

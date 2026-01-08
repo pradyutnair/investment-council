@@ -149,7 +149,7 @@ export function FormattedMarkdown({ content, className = '' }: FormattedMarkdown
     
     // Paragraphs
     p: ({ children }) => (
-      <p className="font-serif mb-4 text-[17px] leading-[1.8] text-foreground/90">
+      <p className="font-serif mb-4 text-[18px] leading-[1.8] text-foreground/90">
         {processChildrenWithCitations(children, sources)}
       </p>
     ),
