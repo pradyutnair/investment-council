@@ -7,8 +7,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Loader2, FileText, MessageSquare, Users, CheckCircle2, AlertCircle, ArrowRight, Brain } from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
 import { ChatInterface } from './chat-interface';
+import { FormattedMarkdown } from './formatted-markdown';
 import { VerdictForm } from './verdict-form';
 import type { ResearchSession } from '@/lib/actions/research';
 import { cn } from '@/lib/utils';
@@ -234,8 +234,8 @@ export function ResearchView({ session, initialMessages }: ResearchViewProps) {
                     )}
                   </div>
                 ) : (
-                  <article className="report-content prose prose-zinc max-w-none dark:prose-invert prose-headings:font-semibold prose-h1:text-2xl prose-h2:text-xl prose-h3:text-lg prose-p:text-[15px] prose-p:leading-relaxed prose-li:text-[15px]">
-                    <ReactMarkdown>{researchReport}</ReactMarkdown>
+                  <article>
+                    <FormattedMarkdown content={researchReport} />
                   </article>
                 )}
               </div>
@@ -280,8 +280,8 @@ export function ResearchView({ session, initialMessages }: ResearchViewProps) {
                                 {analysis.agent === 'chatgpt' ? 'ChatGPT' : analysis.agent === 'claude' ? 'Claude' : 'Gemini'}
                               </span>
                             </div>
-                            <div className="prose prose-sm prose-zinc max-w-none dark:prose-invert">
-                              <ReactMarkdown>{analysis.analysis}</ReactMarkdown>
+                            <div className="text-sm">
+                              <FormattedMarkdown content={analysis.analysis} />
                             </div>
                           </div>
                         ))}

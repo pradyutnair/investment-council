@@ -120,12 +120,29 @@ Provide a comprehensive markdown report structured as a professional investment 
 - Executive Summary (with clear buy/pass recommendation)
 - Investment thesis in 2-3 sentences
 - Detailed sections for each area above
-- Financial tables where relevant
+- Financial tables where relevant (using proper markdown table format with | separators)
 - Clear investment conclusion with confidence level
 - Specific entry price targets and position sizing
 - Key questions that remain unanswered
 
-Be thorough, objective, and data-driven. Cite specific metrics and sources where possible.
+CRITICAL FORMATTING REQUIREMENTS:
+1. **Inline Source Citations**: After EACH factual sentence/statement, include the source as a small hyperlinked citation capsule in the format: [1], [2], etc.
+2. **Reference List**: At the end of the report, include a numbered reference list with full URLs in this exact format:
+
+   ## Sources
+   1. [Source Name](URL)
+   2. [Source Name](URL)
+
+3. **Table Format**: Use proper markdown table syntax with | separators and alignment. Example:
+   | Metric | 2022 | 2023 | 2024 |
+   |--------|------|------|------|
+   | Revenue | $100M | $120M | $140M |
+   | Margin | 15% | 18% | 22% |
+
+4. **Citation Placement**: Citations should appear immediately after the sentence they support, before any punctuation. Example: "The company grew revenue 20% year-over-year[1]."
+5. **Multiple Sources**: Use multiple citations like [1][2] when a statement is supported by multiple sources
+
+Be thorough, objective, and data-driven. Every factual claim must have a source citation.
 Think critically about the thesis and don't just confirm bias - actively seek disconfirming evidence.`;
   }
 
