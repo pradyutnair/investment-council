@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2 } from 'lucide-react';
+import { Loader2, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
 
 export function ThesisForm() {
@@ -26,7 +26,6 @@ export function ThesisForm() {
     setIsSubmitting(true);
 
     try {
-      // Create research session
       const response = await fetch('/api/research/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -42,9 +41,6 @@ export function ThesisForm() {
       }
 
       const { sessionId } = await response.json();
-      toast.success('Research session created');
-
-      // Redirect to research session page
       router.push(`/dashboard/research/${sessionId}`);
     } catch (error) {
       console.error('Error creating research session:', error);
@@ -55,54 +51,61 @@ export function ThesisForm() {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} className="space-y-5">
       {/* Title */}
       <div className="space-y-2">
-        <Label htmlFor="title">Title (optional)</Label>
+        <Label htmlFor="title" className="text-[13px] font-medium">
+          Title <span className="text-muted-foreground font-normal">(optional)</span>
+        </Label>
         <Input
           id="title"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder="e.g., Short-term opportunities in undervalued tech stocks"
+          placeholder="e.g., Spinoff opportunity in industrial sector"
+          className="h-10"
         />
       </div>
 
       {/* Thesis */}
       <div className="space-y-2">
-        <Label htmlFor="thesis">Investment Thesis / Query *</Label>
+        <Label htmlFor="thesis" className="text-[13px] font-medium">
+          Investment Thesis
+        </Label>
         <Textarea
           id="thesis"
           value={thesis}
           onChange={(e) => setThesis(e.target.value)}
-          placeholder="Describe your investment hypothesis, specific query, or area of research you'd like to explore...
+          placeholder="Describe your investment hypothesis or query...
 
 Examples:
-• 'Research undervalued semiconductor companies that could benefit from AI infrastructure buildout'
-• 'Analyze the investment case for distressed retail properties in secondary markets'
-• 'Investigate short-term catalysts for small-cap biotech companies with Phase 2 data readouts expected'"
-          rows={10}
-          className="resize-none"
+• Research special situation opportunities in recent spinoffs
+• Analyze deep value plays in the shipping sector
+• Investigate catalyst-driven opportunities in small-cap biotech"
+          rows={8}
+          className="resize-none text-[14px] leading-relaxed"
           required
         />
-        <p className="text-xs text-muted-foreground">
-          Be specific about your thesis or question. The AI council will research and debate this from multiple angles.
+        <p className="text-[12px] text-muted-foreground">
+          Be specific about your thesis. The AI council will research and debate this from multiple angles.
         </p>
       </div>
 
       {/* Submit Button */}
       <Button
         type="submit"
-        size="lg"
         disabled={isSubmitting}
-        className="w-full"
+        className="w-full h-11 text-[14px] font-medium"
       >
         {isSubmitting ? (
           <>
             <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-            Creating Research Session...
+            Creating Session...
           </>
         ) : (
-          'Start Research Council'
+          <>
+            Start Research
+            <ArrowRight className="w-4 h-4 ml-2" />
+          </>
         )}
       </Button>
     </form>

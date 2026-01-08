@@ -2,55 +2,47 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Separator } from '@/components/ui/separator'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { Badge } from '@/components/ui/badge'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { createClient } from '@/lib/supabase/client'
 import { getUserResearchSessions, deleteResearchSession } from '@/lib/actions/research'
 import type { ResearchSession } from '@/lib/actions/research'
-import { Plus, LogOut, Trash2 } from 'lucide-react'
+import { Plus, LogOut, Trash2, FileText, ChevronRight, Sparkles, Settings } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
-const STATUS_LABELS: Record<string, string> = {
-  researching: 'Research',
-  council_gather: 'Council',
-  council_debate: 'Debate',
-  deliberation: 'Chat',
-  finalized: 'Final',
+const STATUS_COLORS: Record<string, string> = {
+  pending: 'bg-zinc-400',
+  researching: 'bg-blue-500',
+  council_gather: 'bg-amber-500',
+  council_debate: 'bg-amber-500',
+  deliberation: 'bg-purple-500',
+  finalized: 'bg-emerald-500',
 }
-
-const STATUS_VARIANTS: Record<string, 'default' | 'secondary' | 'outline'> = {
-  researching: 'default',
-  council_gather: 'default',
-  council_debate: 'default',
-  deliberation: 'secondary',
-  finalized: 'outline',
-} as const
 
 export function Sidebar() {
   const router = useRouter()
+  const pathname = usePathname()
   const supabase = createClient()
   const [sessions, setSessions] = useState<ResearchSession[]>([])
   const [user, setUser] = useState<any>(null)
+  const [isCollapsed, setIsCollapsed] = useState(false)
 
   useEffect(() => {
-    // Load user
     supabase.auth.getUser().then(({ data: { user } }) => {
       setUser(user)
     })
 
-    // Load research sessions
     loadSessions()
 
-    // Subscribe to auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
       supabase.auth.getUser().then(({ data: { user } }) => {
         setUser(user)
@@ -76,6 +68,7 @@ export function Sidebar() {
 
   const handleDeleteSession = async (sessionId: string, e: React.MouseEvent) => {
     e.preventDefault()
+    e.stopPropagation()
     try {
       await deleteResearchSession(sessionId)
       setSessions(sessions.filter(s => s.id !== sessionId))
@@ -94,92 +87,128 @@ export function Sidebar() {
     return user.email.charAt(0).toUpperCase()
   }
 
+  const isActiveSession = (sessionId: string) => {
+    return pathname === `/dashboard/research/${sessionId}`
+  }
+
   return (
-    <div className="w-56 border-r border-border/40 flex flex-col bg-background">
-      {/* Header */}
+    <div className="w-64 h-screen flex flex-col bg-[hsl(var(--sidebar-background))] border-r border-[hsl(var(--sidebar-border))]">
+      {/* Logo & Brand */}
+      <div className="h-14 px-4 flex items-center border-b border-[hsl(var(--sidebar-border))]">
+        <Link href="/dashboard" className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg bg-foreground flex items-center justify-center">
+            <Sparkles className="w-4 h-4 text-background" />
+          </div>
+          <span className="font-semibold text-[15px] tracking-tight">Investment Council</span>
+        </Link>
+      </div>
+
+      {/* New Research Button */}
       <div className="p-3">
         <Button
           onClick={handleNewResearch}
-          variant="outline"
-          className="w-full justify-start h-9 text-sm"
+          className="w-full h-9 justify-start gap-2.5 text-[13px] font-medium shadow-sm"
           size="sm"
         >
-          <Plus className="w-3.5 h-3.5 mr-2" />
-          New research
+          <Plus className="w-4 h-4" />
+          New Research
         </Button>
       </div>
 
-      <Separator className="bg-border/40" />
-
-      {/* Research Sessions List */}
-      <ScrollArea className="flex-1 min-h-0">
-        <div className="p-2 space-y-0.5">
-          {sessions.map((session) => (
-            <div key={session.id} className="group relative">
-              <Link
-                href={`/dashboard/research/${session.id}`}
-                className="flex flex-col gap-1 px-2.5 py-2 rounded-md hover:bg-accent/50 transition-colors"
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-sm font-medium truncate text-foreground">
-                    {session.title}
-                  </span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="opacity-0 group-hover:opacity-100 h-6 w-6 p-0 hover:text-destructive shrink-0"
-                    onClick={(e) => handleDeleteSession(session.id, e)}
-                  >
-                    <Trash2 className="w-3 h-3" />
-                  </Button>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground truncate">
-                    {session.thesis.substring(0, 30)}...
-                  </span>
-                  <Badge
-                    variant={STATUS_VARIANTS[session.status]}
-                    className="text-[10px] h-4 px-1.5 shrink-0"
-                  >
-                    {STATUS_LABELS[session.status]}
-                  </Badge>
-                </div>
-              </Link>
-            </div>
-          ))}
-          {sessions.length === 0 && (
-            <div className="px-2.5 py-4 text-center text-sm text-muted-foreground">
-              <p>No research sessions yet.</p>
-              <p className="text-xs mt-1">Create one to get started.</p>
-            </div>
-          )}
+      {/* Sessions List */}
+      <div className="flex-1 overflow-hidden flex flex-col min-h-0">
+        <div className="px-4 py-2">
+          <span className="text-[11px] font-medium text-[hsl(var(--sidebar-muted))] uppercase tracking-wider">
+            Research Sessions
+          </span>
         </div>
-      </ScrollArea>
+        
+        <ScrollArea className="flex-1 px-2">
+          <div className="space-y-0.5 pb-4">
+            {sessions.map((session) => (
+              <Link
+                key={session.id}
+                href={`/dashboard/research/${session.id}`}
+                className={cn(
+                  "group flex items-center gap-3 px-2.5 py-2 rounded-lg transition-all duration-150",
+                  "hover:bg-[hsl(var(--sidebar-accent))]",
+                  isActiveSession(session.id) && "bg-[hsl(var(--sidebar-accent))]"
+                )}
+              >
+                <div className="relative flex-shrink-0">
+                  <FileText className="w-4 h-4 text-[hsl(var(--sidebar-muted))]" />
+                  <div className={cn(
+                    "absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full ring-2 ring-[hsl(var(--sidebar-background))]",
+                    STATUS_COLORS[session.status] || 'bg-zinc-400'
+                  )} />
+                </div>
+                
+                <div className="flex-1 min-w-0">
+                  <p className="text-[13px] font-medium text-[hsl(var(--sidebar-foreground))] truncate leading-tight">
+                    {session.title}
+                  </p>
+                  <p className="text-[11px] text-[hsl(var(--sidebar-muted))] truncate mt-0.5">
+                    {session.thesis.substring(0, 40)}...
+                  </p>
+                </div>
 
-      <Separator className="bg-border/40" />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className={cn(
+                    "h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity",
+                    "hover:bg-destructive/10 hover:text-destructive"
+                  )}
+                  onClick={(e) => handleDeleteSession(session.id, e)}
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </Button>
+              </Link>
+            ))}
+            
+            {sessions.length === 0 && (
+              <div className="px-2.5 py-8 text-center">
+                <FileText className="w-8 h-8 mx-auto text-[hsl(var(--sidebar-muted))] opacity-50 mb-2" />
+                <p className="text-[13px] text-[hsl(var(--sidebar-muted))]">No research yet</p>
+                <p className="text-[11px] text-[hsl(var(--sidebar-muted))] opacity-70 mt-0.5">
+                  Create your first session
+                </p>
+              </div>
+            )}
+          </div>
+        </ScrollArea>
+      </div>
 
       {/* User Menu */}
-      <div className="p-2">
+      <div className="p-2 border-t border-[hsl(var(--sidebar-border))]">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              className="w-full justify-start gap-2 px-2.5 h-9 text-sm"
-            >
-              <Avatar className="w-5 h-5">
-                <AvatarFallback className="bg-muted text-[10px] text-muted-foreground">
+            <button className="w-full flex items-center gap-3 px-2.5 py-2 rounded-lg hover:bg-[hsl(var(--sidebar-accent))] transition-colors">
+              <Avatar className="w-7 h-7">
+                <AvatarFallback className="bg-foreground/10 text-[11px] font-medium">
                   {getUserInitials()}
                 </AvatarFallback>
               </Avatar>
-              <span className="text-muted-foreground truncate">
-                {user?.email}
-              </span>
-            </Button>
+              <div className="flex-1 min-w-0 text-left">
+                <p className="text-[13px] font-medium text-[hsl(var(--sidebar-foreground))] truncate">
+                  {user?.email?.split('@')[0] || 'User'}
+                </p>
+                <p className="text-[11px] text-[hsl(var(--sidebar-muted))] truncate">
+                  {user?.email}
+                </p>
+              </div>
+              <ChevronRight className="w-4 h-4 text-[hsl(var(--sidebar-muted))]" />
+            </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48">
+          <DropdownMenuContent align="end" side="right" className="w-56">
+            <DropdownMenuItem disabled className="text-[13px]">
+              <Settings className="w-4 h-4 mr-2" />
+              Settings
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
             <DropdownMenuItem
               onClick={handleSignOut}
-              className="cursor-pointer text-muted-foreground"
+              className="text-[13px] text-destructive focus:text-destructive"
             >
               <LogOut className="w-4 h-4 mr-2" />
               Sign out

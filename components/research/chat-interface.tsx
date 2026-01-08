@@ -5,10 +5,10 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
-import { Loader2, Send } from 'lucide-react';
+import { Loader2, Send, User, Bot } from 'lucide-react';
 import { toast } from 'sonner';
 import ReactMarkdown from 'react-markdown';
+import { cn } from '@/lib/utils';
 
 interface ChatInterfaceProps {
   sessionId: string;
@@ -37,7 +37,6 @@ export function ChatInterface({ sessionId, initialMessages, researchReport, disa
     setInput('');
     setIsLoading(true);
 
-    // Add user message
     setMessages((prev) => [...prev, { role: 'user', content: userMessage }]);
 
     try {
@@ -51,16 +50,13 @@ export function ChatInterface({ sessionId, initialMessages, researchReport, disa
         }),
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to send message');
-      }
+      if (!response.ok) throw new Error('Failed to send message');
 
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
       let assistantMessage = '';
 
-      // Add placeholder for assistant message
       setMessages((prev) => [...prev, { role: 'assistant', content: '' }]);
 
       while (true) {
@@ -83,98 +79,73 @@ export function ChatInterface({ sessionId, initialMessages, researchReport, disa
                   return newMessages;
                 });
               }
-            } catch (e) {
-              // Skip invalid JSON
-            }
+            } catch (e) {}
           }
         }
       }
     } catch (error) {
       console.error('Chat error:', error);
       toast.error('Failed to send message');
-      // Remove the user message if failed
       setMessages((prev) => prev.slice(0, -1));
     } finally {
       setIsLoading(false);
     }
   };
 
-  const getAvatarColor = (role: string) => {
-    switch (role) {
-      case 'user': return 'bg-primary';
-      case 'assistant': return 'bg-green-600';
-      case 'gemini': return 'bg-blue-600';
-      case 'chatgpt': return 'bg-emerald-600';
-      case 'claude': return 'bg-orange-600';
-      default: return 'bg-gray-600';
-    }
-  };
-
-  const getAvatarLabel = (role: string) => {
-    switch (role) {
-      case 'user': return 'You';
-      case 'assistant': return 'AI';
-      case 'gemini': return 'Gem';
-      case 'chatgpt': return 'GPT';
-      case 'claude': return 'Cla';
-      default: return role.charAt(0).toUpperCase();
-    }
-  };
-
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-full flex flex-col bg-background">
       {/* Messages */}
       <ScrollArea className="flex-1">
-        <div ref={scrollRef} className="p-4 space-y-4">
+        <div ref={scrollRef} className="max-w-3xl mx-auto px-6 py-6 space-y-6">
           {messages.length === 0 ? (
-            <div className="text-center text-muted-foreground py-8">
-              <p className="mb-2">Start a conversation about this research</p>
-              <p className="text-sm">Ask questions, request clarification, or discuss the findings</p>
+            <div className="text-center py-16">
+              <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-foreground/5 mb-4">
+                <Bot className="w-6 h-6 text-muted-foreground" />
+              </div>
+              <p className="text-[15px] font-medium mb-1">Start a conversation</p>
+              <p className="text-[13px] text-muted-foreground">Ask questions about the research or discuss the findings</p>
             </div>
           ) : (
             messages.map((message, i) => (
-              <div key={i} className={`flex gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                {message.role !== 'user' && (
-                  <Avatar className="w-8 h-8">
-                    <AvatarFallback className={getAvatarColor(message.role)}>
-                      {getAvatarLabel(message.role)}
-                    </AvatarFallback>
-                  </Avatar>
-                )}
-                <div className={`max-w-[80%] rounded-lg px-4 py-2 ${
-                  message.role === 'user'
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-muted'
-                }`}>
-                  {message.role !== 'user' && message.role !== 'assistant' && (
-                    <Badge variant="outline" className="mb-2 text-xs">
-                      {message.role}
-                    </Badge>
-                  )}
-                  <div className={`prose prose-sm max-w-none ${
-                    message.role === 'user' ? 'dark:prose-invert' : 'dark:prose-invert'
-                  }`}>
-                    <ReactMarkdown>{message.content}</ReactMarkdown>
+              <div key={i} className={cn("flex gap-4", message.role === 'user' ? 'flex-row-reverse' : 'flex-row')}>
+                <Avatar className="w-8 h-8 shrink-0">
+                  <AvatarFallback className={cn(
+                    "text-[11px] font-medium",
+                    message.role === 'user' ? 'bg-foreground text-background' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+                  )}>
+                    {message.role === 'user' ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
+                  </AvatarFallback>
+                </Avatar>
+                <div className={cn(
+                  "flex-1 min-w-0 max-w-[85%]",
+                  message.role === 'user' && 'flex justify-end'
+                )}>
+                  <div className={cn(
+                    "rounded-2xl px-4 py-3",
+                    message.role === 'user' 
+                      ? 'bg-foreground text-background rounded-tr-md' 
+                      : 'bg-muted rounded-tl-md'
+                  )}>
+                    <div className={cn(
+                      "prose prose-sm max-w-none",
+                      message.role === 'user' ? 'prose-invert' : 'dark:prose-invert',
+                      "prose-p:text-[14px] prose-p:leading-relaxed prose-p:my-1"
+                    )}>
+                      <ReactMarkdown>{message.content}</ReactMarkdown>
+                    </div>
                   </div>
                 </div>
-                {message.role === 'user' && (
-                  <Avatar className="w-8 h-8">
-                    <AvatarFallback className="bg-primary">
-                      You
-                    </AvatarFallback>
-                  </Avatar>
-                )}
               </div>
             ))
           )}
-          {isLoading && (
-            <div className="flex gap-3">
-              <Avatar className="w-8 h-8">
-                <AvatarFallback className="bg-green-600">
-                  AI
+          {isLoading && messages[messages.length - 1]?.role !== 'assistant' && (
+            <div className="flex gap-4">
+              <Avatar className="w-8 h-8 shrink-0">
+                <AvatarFallback className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
+                  <Bot className="w-4 h-4" />
                 </AvatarFallback>
               </Avatar>
-              <div className="bg-muted rounded-lg px-4 py-2">
+              <div className="bg-muted rounded-2xl rounded-tl-md px-4 py-3">
                 <Loader2 className="w-4 h-4 animate-spin" />
               </div>
             </div>
@@ -183,35 +154,37 @@ export function ChatInterface({ sessionId, initialMessages, researchReport, disa
       </ScrollArea>
 
       {/* Input */}
-      <div className="border-t border-border p-4">
-        <form onSubmit={handleSubmit} className="flex gap-2">
-          <Textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask a question or share your thoughts..."
-            rows={2}
-            className="flex-1 resize-none"
-            disabled={disabled || isLoading}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                handleSubmit(e);
-              }
-            }}
-          />
-          <Button
-            type="submit"
-            size="icon"
-            disabled={disabled || isLoading || !input.trim()}
-            className="h-10 w-10 shrink-0"
-          >
-            {isLoading ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Send className="w-4 h-4" />
-            )}
-          </Button>
-        </form>
+      <div className="border-t border-border bg-background">
+        <div className="max-w-3xl mx-auto px-6 py-4">
+          <form onSubmit={handleSubmit} className="flex gap-3">
+            <Textarea
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="Ask a question about the research..."
+              rows={1}
+              className="flex-1 resize-none min-h-[44px] max-h-32 text-[14px] rounded-xl"
+              disabled={disabled || isLoading}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSubmit(e);
+                }
+              }}
+            />
+            <Button
+              type="submit"
+              size="icon"
+              disabled={disabled || isLoading || !input.trim()}
+              className="h-11 w-11 rounded-xl shrink-0"
+            >
+              {isLoading ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Send className="w-4 h-4" />
+              )}
+            </Button>
+          </form>
+        </div>
       </div>
     </div>
   );
