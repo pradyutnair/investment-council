@@ -7,15 +7,26 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
   Loader2, FileText, MessageSquare, Users, CheckCircle2, AlertCircle, ArrowRight, Brain,
-  TrendingUp, TrendingDown, ShieldAlert, Sparkles, AlertTriangle, ChevronDown
+  TrendingUp, TrendingDown, ShieldAlert, Sparkles, AlertTriangle, ChevronDown, X
 } from 'lucide-react';
 import { ChatInterface } from './chat-interface';
 import { FormattedMarkdown } from './formatted-markdown';
 import { VerdictForm } from './verdict-form';
 import type { ResearchSession } from '@/lib/actions/research';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 // Role configuration with icons, colors, and descriptions
 const ROLE_CONFIG: Record<string, { 
@@ -117,13 +128,16 @@ export function ResearchView({ session, initialMessages }: ResearchViewProps) {
   const [verdict, setVerdict] = useState(session.verdict);
 
   const [isResearching, setIsResearching] = useState(false);
+  const [hasStartedResearching, setHasStartedResearching] = useState(false);
   const [researchError, setResearchError] = useState<string | null>(null);
   const [isCouncilRunning, setIsCouncilRunning] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const startResearch = async () => {
     setIsResearching(true);
     setResearchError(null);
-    setStatus('researching');
+    setHasStartedResearching(false);
 
     try {
       const response = await fetch('/api/research/start', {
@@ -132,11 +146,15 @@ export function ResearchView({ session, initialMessages }: ResearchViewProps) {
         body: JSON.stringify({ sessionId: session.id }),
       });
 
-      if (!response.ok) throw new Error('Failed to start research');
+      if (!response.ok) {
+        const error = await response.text();
+        throw new Error(error || 'Failed to start research');
+      }
 
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
+      let hasReceivedData = false;
 
       while (true) {
         const { done, value } = await reader!.read();
@@ -150,13 +168,22 @@ export function ResearchView({ session, initialMessages }: ResearchViewProps) {
           if (line.startsWith('data: ')) {
             try {
               const data = JSON.parse(line.slice(6));
+              // Only show researching status after receiving first data from API
+              if (!hasReceivedData) {
+                hasReceivedData = true;
+                setHasStartedResearching(true);
+                setStatus('researching');
+              }
               if (data.type === 'complete') {
                 setResearchReport(data.report);
                 setStatus('council_gather');
                 router.refresh();
               } else if (data.type === 'error') {
-                setResearchError(data.content || 'Research failed');
+                const errorMsg = data.content || 'Research failed';
+                setResearchError(errorMsg);
+                toast.error('Research Failed', { description: errorMsg });
                 setIsResearching(false);
+                setHasStartedResearching(false);
               }
             } catch (e) {}
           }
@@ -164,7 +191,11 @@ export function ResearchView({ session, initialMessages }: ResearchViewProps) {
       }
     } catch (error) {
       console.error('Research error:', error);
-      setResearchError(error instanceof Error ? error.message : 'Failed to complete research');
+      const errorMsg = error instanceof Error ? error.message : 'Failed to complete research';
+      setResearchError(errorMsg);
+      toast.error('Research Error', { description: errorMsg });
+      setIsResearching(false);
+      setHasStartedResearching(false);
     } finally {
       setIsResearching(false);
     }
@@ -180,7 +211,10 @@ export function ResearchView({ session, initialMessages }: ResearchViewProps) {
         body: JSON.stringify({ sessionId: session.id }),
       });
 
-      if (!response.ok) throw new Error('Failed to start council analysis');
+      if (!response.ok) {
+        const error = await response.text();
+        throw new Error(error || 'Failed to start council analysis');
+      }
 
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();
@@ -208,6 +242,9 @@ export function ResearchView({ session, initialMessages }: ResearchViewProps) {
               } else if (data.type === 'complete') {
                 setStatus('deliberation');
                 router.refresh();
+              } else if (data.type === 'error') {
+                const errorMsg = data.content || 'Council analysis failed';
+                toast.error('Council Error', { description: errorMsg });
               }
             } catch (e) {}
           }
@@ -215,8 +252,31 @@ export function ResearchView({ session, initialMessages }: ResearchViewProps) {
       }
     } catch (error) {
       console.error('Council error:', error);
+      const errorMsg = error instanceof Error ? error.message : 'Failed to complete council analysis';
+      toast.error('Council Error', { description: errorMsg });
     } finally {
       setIsCouncilRunning(false);
+    }
+  };
+
+  const handleDeleteSession = async () => {
+    setIsDeleting(true);
+    try {
+      const response = await fetch('/api/research/delete', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId: session.id }),
+      });
+
+      if (!response.ok) throw new Error('Failed to delete session');
+
+      router.push('/dashboard');
+      router.refresh();
+    } catch (error) {
+      console.error('Delete error:', error);
+      setIsDeleteDialogOpen(false);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -229,6 +289,10 @@ export function ResearchView({ session, initialMessages }: ResearchViewProps) {
       deliberation: { label: 'Deliberation', color: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400', icon: <MessageSquare className="w-3 h-3" /> },
       finalized: { label: 'Finalized', color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400', icon: <CheckCircle2 className="w-3 h-3" /> },
     };
+    // Don't show researching badge unless API has actually started responding
+    if (status === 'researching' && !hasStartedResearching) {
+      return configs.pending;
+    }
     return configs[status] || configs.pending;
   };
 
@@ -245,6 +309,14 @@ export function ResearchView({ session, initialMessages }: ResearchViewProps) {
             <span>{statusConfig.label}</span>
           </div>
         </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive"
+          onClick={() => setIsDeleteDialogOpen(true)}
+        >
+          <X className="w-4 h-4" />
+        </Button>
       </header>
 
       {/* Content */}
@@ -470,6 +542,35 @@ export function ResearchView({ session, initialMessages }: ResearchViewProps) {
           </div>
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Research Session?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{session.title}"? This action cannot be undone and will permanently remove the session and all its data.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteSession}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                'Delete'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

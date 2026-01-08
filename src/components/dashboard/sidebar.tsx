@@ -53,6 +53,13 @@ export function Sidebar() {
     return () => subscription.unsubscribe()
   }, [])
 
+  // Reload sessions when pathname changes to /dashboard (e.g., after deleting a session)
+  useEffect(() => {
+    if (pathname === '/dashboard') {
+      loadSessions()
+    }
+  }, [pathname])
+
   const loadSessions = async () => {
     try {
       const data = await getUserResearchSessions()
