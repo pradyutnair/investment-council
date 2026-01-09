@@ -46,7 +46,6 @@ export async function POST(req: NextRequest) {
           // Start research
           const researchGenerator = geminiResearch.startResearch({
             thesis: session.thesis,
-            dealId: session.id,
           });
 
           // Stream to client - only send completion/error events, not progress

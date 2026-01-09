@@ -116,9 +116,6 @@ export async function* runSpecializedResearch(
 
     for await (const step of geminiResearch.startResearch({
       thesis,
-      companyName,
-      ticker,
-      dealId: sessionId,
     })) {
       if (step.type === 'complete') {
         researchReport = step.report;

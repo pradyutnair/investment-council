@@ -64,9 +64,6 @@ export async function runResearchAndCritique(input: ResearchCritiqueInput): Prom
     let fullReport = '';
     for await (const step of geminiResearch.startResearch({
       thesis,
-      companyName: opportunity.companyName,
-      ticker: opportunity.ticker,
-      contextFiles,
     })) {
       if (step.type === 'complete') {
         fullReport = step.report;

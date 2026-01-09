@@ -41,11 +41,7 @@ export async function POST(req: NextRequest) {
         try {
           // Start research
           const researchGenerator = geminiResearch.startResearch({
-            dealId: deal.id,
             thesis: deal.thesis,
-            companyName: deal.company_name,
-            ticker: deal.ticker || undefined,
-            contextFiles: deal.context_files || undefined,
           });
 
           // Stream thought steps to client
