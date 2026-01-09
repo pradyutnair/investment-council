@@ -309,6 +309,7 @@ export function ResearchView({ session, initialMessages = [] }: ResearchViewProp
                     <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Council Analyses</h3>
                     {councilAnalyses.map((analysis: any, i: number) => {
                       const roleConfig = getRoleConfig(analysis.role);
+                      const displayLabel = analysis.agent ? `${analysis.agent} • ${roleConfig.label}` : roleConfig.label;
                       return (
                         <Collapsible key={i} defaultOpen={i === 0}>
                           <CollapsibleTrigger className="w-full">
@@ -318,7 +319,7 @@ export function ResearchView({ session, initialMessages = [] }: ResearchViewProp
                                   {roleConfig.icon}
                                 </div>
                                 <div className="text-left">
-                                  <p className={cn("font-semibold", roleConfig.color)}>{roleConfig.label}</p>
+                                  <p className={cn("font-semibold", roleConfig.color)}>{displayLabel}</p>
                                 </div>
                               </div>
                               <ChevronDown className="w-5 h-5 text-muted-foreground" />
