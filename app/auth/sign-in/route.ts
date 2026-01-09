@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
-import { redirect } from 'next/navigation'
+import { NextResponse } from 'next/server'
 
 export async function POST(req: Request) {
   const formData = await req.formData()
@@ -15,9 +15,9 @@ export async function POST(req: Request) {
   })
 
   if (error) {
-    redirect('/login?error=Could not authenticate user')
+    return NextResponse.json({ error: error.message }, { status: 400 })
   }
 
   revalidatePath('/', 'layout')
-  redirect('/login?message=Check email for login link')
+  return NextResponse.json({ success: true })
 }

@@ -4,24 +4,16 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
-import { LoginClient } from './login-client'
+import { LoginForm } from './login-form'
 import { Sparkles } from 'lucide-react'
 
-export default async function LoginPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ error?: string; message?: string }>
-}) {
+export default async function LoginPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
   if (user) {
     redirect('/dashboard')
   }
-
-  const params = await searchParams
-  const error = params.error
-  const message = params.message
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-background">
@@ -41,25 +33,11 @@ export default async function LoginPage({
           </div>
         </div>
 
-        {/* Error / Message Display */}
-        <LoginClient message={message} error={error} />
-
         {/* Auth Card */}
         <Card className="border-border shadow-sm">
           <CardContent className="pt-6 space-y-4">
             {/* Email Sign In */}
-            <form action="/auth/sign-in" method="post" className="space-y-3">
-              <Input
-                name="email"
-                type="email"
-                placeholder="Email address"
-                required
-                className="h-11 text-[14px]"
-              />
-              <Button type="submit" className="w-full h-11 text-[14px] font-medium">
-                Continue with Email
-              </Button>
-            </form>
+            <LoginForm />
 
             {/* OAuth Providers */}
             {/* TODO: Re-enable OAuth providers in the future when needed */}
