@@ -1,12 +1,14 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import type { ResearchStrategy } from '@/src/types/research'
 
 export interface ResearchSession {
   id: string
   user_id: string
   title: string
   thesis: string
+  strategy: ResearchStrategy
   status: 'pending' | 'researching' | 'council_gather' | 'council_debate' | 'deliberation' | 'finalized'
   research_report: string | null
   research_started_at: string | null
@@ -56,7 +58,11 @@ export async function getResearchSession(sessionId: string): Promise<ResearchSes
   return data
 }
 
-export async function createResearchSession(title: string, thesis: string): Promise<ResearchSession> {
+export async function createResearchSession(
+  title: string, 
+  thesis: string, 
+  strategy: ResearchStrategy = 'general'
+): Promise<ResearchSession> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
@@ -68,6 +74,7 @@ export async function createResearchSession(title: string, thesis: string): Prom
       user_id: user.id,
       title,
       thesis,
+      strategy,
       status: 'pending',
     })
     .select()

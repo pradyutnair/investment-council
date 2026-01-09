@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { createResearchSession } from '@/lib/actions/research';
+import { createResearchSession } from '@/src/lib/actions/research';
+import type { ResearchStrategy } from '@/src/types/research';
 
 export async function POST(req: NextRequest) {
   try {
@@ -11,18 +12,27 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { title, thesis } = await req.json();
+    const { title, thesis, strategy = 'general' } = await req.json();
 
     if (!thesis) {
       return NextResponse.json({ error: 'Thesis is required' }, { status: 400 });
     }
 
+    // Validate strategy
+    const validStrategies: ResearchStrategy[] = ['value', 'special-sits', 'distressed', 'general'];
+    if (!validStrategies.includes(strategy)) {
+      return NextResponse.json({ 
+        error: `Invalid strategy. Must be one of: ${validStrategies.join(', ')}` 
+      }, { status: 400 });
+    }
+
     const session = await createResearchSession(
       title || thesis.substring(0, 100) + '...',
-      thesis
+      thesis,
+      strategy
     );
 
-    return NextResponse.json({ sessionId: session.id });
+    return NextResponse.json({ sessionId: session.id, strategy });
   } catch (error) {
     console.error('Create research session error:', error);
     return NextResponse.json(

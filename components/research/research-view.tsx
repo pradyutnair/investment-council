@@ -19,14 +19,42 @@ import {
 } from '@/components/ui/alert-dialog';
 import {
   Loader2, FileText, MessageSquare, Users, CheckCircle2, AlertCircle, ArrowRight, Brain,
-  TrendingUp, TrendingDown, ShieldAlert, Sparkles, AlertTriangle, ChevronDown, X
+  TrendingUp, TrendingDown, ShieldAlert, Sparkles, AlertTriangle, ChevronDown, X, Search
 } from 'lucide-react';
 import { ChatInterface } from './chat-interface';
 import { FormattedMarkdown } from './formatted-markdown';
 import { VerdictForm } from './verdict-form';
-import type { ResearchSession } from '@/lib/actions/research';
+import type { ResearchSession } from '@/src/lib/actions/research';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+
+// Strategy configuration for display
+const STRATEGY_DISPLAY: Record<string, { 
+  icon: React.ReactNode; 
+  label: string;
+  color: string;
+}> = {
+  'value': {
+    icon: <TrendingUp className="w-3 h-3" />,
+    label: 'Value',
+    color: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20',
+  },
+  'special-sits': {
+    icon: <Sparkles className="w-3 h-3" />,
+    label: 'Special Sits',
+    color: 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20',
+  },
+  'distressed': {
+    icon: <AlertTriangle className="w-3 h-3" />,
+    label: 'Distressed',
+    color: 'bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20',
+  },
+  'general': {
+    icon: <Search className="w-3 h-3" />,
+    label: 'General',
+    color: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20',
+  },
+};
 
 // Role configuration with icons, colors, and descriptions
 const ROLE_CONFIG: Record<string, { 
@@ -130,20 +158,31 @@ export function ResearchView({ session, initialMessages }: ResearchViewProps) {
   const [isResearching, setIsResearching] = useState(false);
   const [hasStartedResearching, setHasStartedResearching] = useState(false);
   const [researchError, setResearchError] = useState<string | null>(null);
+  const [currentPhase, setCurrentPhase] = useState<string | null>(null);
+  const [currentAgent, setCurrentAgent] = useState<string | null>(null);
   const [isCouncilRunning, setIsCouncilRunning] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Get strategy from session (defaults to 'general')
+  const strategy = (session as any).strategy || 'general';
 
   const startResearch = async () => {
     setIsResearching(true);
     setResearchError(null);
     setHasStartedResearching(false);
+    setCurrentPhase(null);
+    setCurrentAgent(null);
 
     try {
-      const response = await fetch('/api/research/start', {
+      // Use specialized endpoint for strategy-based research
+      const response = await fetch('/api/research/specialized', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId: session.id }),
+        body: JSON.stringify({ 
+          sessionId: session.id,
+          strategy: strategy,
+        }),
       });
 
       if (!response.ok) {
@@ -168,22 +207,46 @@ export function ResearchView({ session, initialMessages }: ResearchViewProps) {
           if (line.startsWith('data: ')) {
             try {
               const data = JSON.parse(line.slice(6));
+              
               // Only show researching status after receiving first data from API
               if (!hasReceivedData) {
                 hasReceivedData = true;
                 setHasStartedResearching(true);
                 setStatus('researching');
               }
+
+              // Update current phase and agent for UI display
+              if (data.type && data.type !== 'complete' && data.type !== 'error') {
+                setCurrentPhase(data.type);
+                setCurrentAgent(data.agent || null);
+              }
+
               if (data.type === 'complete') {
-                setResearchReport(data.report);
+                // Parse the complete result
+                try {
+                  const results = JSON.parse(data.content);
+                  setResearchReport(results.researchReport);
+                  if (results.verdict) {
+                    setVerdict(results.verdict);
+                  }
+                  // Council analyses are already saved to DB by the API
+                  // Refresh to get updated data
+                  router.refresh();
+                } catch {
+                  // If content is just a string report
+                  setResearchReport(data.content);
+                }
                 setStatus('council_gather');
-                router.refresh();
+                setCurrentPhase(null);
+                setCurrentAgent(null);
               } else if (data.type === 'error') {
                 const errorMsg = data.content || 'Research failed';
                 setResearchError(errorMsg);
                 toast.error('Research Failed', { description: errorMsg });
                 setIsResearching(false);
                 setHasStartedResearching(false);
+                setCurrentPhase(null);
+                setCurrentAgent(null);
               }
             } catch (e) {}
           }
@@ -196,6 +259,8 @@ export function ResearchView({ session, initialMessages }: ResearchViewProps) {
       toast.error('Research Error', { description: errorMsg });
       setIsResearching(false);
       setHasStartedResearching(false);
+      setCurrentPhase(null);
+      setCurrentAgent(null);
     } finally {
       setIsResearching(false);
     }
@@ -298,12 +363,20 @@ export function ResearchView({ session, initialMessages }: ResearchViewProps) {
 
   const statusConfig = getStatusConfig();
 
+  const strategyDisplay = STRATEGY_DISPLAY[strategy] || STRATEGY_DISPLAY.general;
+
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
       <header className="h-14 px-6 flex items-center justify-between border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="flex items-center gap-3 min-w-0 flex-1">
           <h1 className="text-[15px] font-medium truncate">{session.title}</h1>
+          {/* Strategy Badge */}
+          <div className={cn("flex items-center gap-1.5 px-2 py-1 rounded-full text-[11px] font-medium border", strategyDisplay.color)}>
+            {strategyDisplay.icon}
+            <span>{strategyDisplay.label}</span>
+          </div>
+          {/* Status Badge */}
           <div className={cn("flex items-center gap-1.5 px-2 py-1 rounded-full text-[11px] font-medium", statusConfig.color)}>
             {statusConfig.icon}
             <span>{statusConfig.label}</span>
@@ -374,10 +447,25 @@ export function ResearchView({ session, initialMessages }: ResearchViewProps) {
                         <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-blue-500/10 mb-4">
                           <Loader2 className="w-7 h-7 text-blue-500 animate-spin" />
                         </div>
-                        <h3 className="text-lg font-medium mb-2">Deep Research in Progress</h3>
-                        <p className="text-[14px] text-muted-foreground max-w-sm mx-auto">
-                          This may take several minutes. Gemini is conducting comprehensive research on your thesis.
+                        <h3 className="text-lg font-medium mb-2">
+                          {strategy !== 'general' ? `${strategy.charAt(0).toUpperCase() + strategy.slice(1).replace('-', ' ')} Research` : 'Deep Research'} in Progress
+                        </h3>
+                        <p className="text-[14px] text-muted-foreground max-w-sm mx-auto mb-4">
+                          This may take several minutes. Running comprehensive research on your thesis.
                         </p>
+                        {/* Phase indicator */}
+                        {currentPhase && (
+                          <div className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-muted/50 text-[13px]">
+                            <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+                            <span className="text-muted-foreground">
+                              {currentPhase === 'starting' && 'Initializing...'}
+                              {currentPhase === 'researching' && 'Running Gemini Deep Research...'}
+                              {currentPhase === 'strategy_analysis' && `${currentAgent || strategy} agent analyzing...`}
+                              {currentPhase === 'critique' && `Council critique: ${currentAgent || 'in progress'}...`}
+                              {currentPhase === 'verdict' && 'Generating investment verdict...'}
+                            </span>
+                          </div>
+                        )}
                       </div>
                     ) : (
                       <div className="text-center">
@@ -385,11 +473,19 @@ export function ResearchView({ session, initialMessages }: ResearchViewProps) {
                           <Brain className="w-7 h-7 text-foreground" />
                         </div>
                         <h3 className="text-lg font-medium mb-2">Ready to Research</h3>
-                        <p className="text-[14px] text-muted-foreground mb-6 max-w-sm mx-auto">
-                          Gemini Deep Research will analyze your thesis and provide a comprehensive investment report.
+                        <p className="text-[14px] text-muted-foreground mb-2 max-w-sm mx-auto">
+                          {strategy !== 'general' 
+                            ? `The ${strategy.replace('-', ' ')} strategy agent will analyze your thesis with specialized focus.`
+                            : 'Gemini Deep Research will analyze your thesis and provide a comprehensive investment report.'
+                          }
                         </p>
+                        {strategy !== 'general' && (
+                          <p className="text-[12px] text-muted-foreground/70 mb-6 max-w-sm mx-auto">
+                            Research → Strategy Analysis → Council Critique → Verdict
+                          </p>
+                        )}
                         <Button onClick={startResearch} className="h-10">
-                          Start Deep Research
+                          Start {strategy !== 'general' ? `${strategy.charAt(0).toUpperCase() + strategy.slice(1).replace('-', ' ')} ` : ''}Research
                           <ArrowRight className="w-4 h-4 ml-2" />
                         </Button>
                       </div>
