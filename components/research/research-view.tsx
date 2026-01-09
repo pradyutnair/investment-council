@@ -21,7 +21,6 @@ import {
   Loader2, FileText, MessageSquare, Users, CheckCircle2, AlertCircle, ArrowRight, Brain,
   TrendingUp, TrendingDown, ShieldAlert, Sparkles, AlertTriangle, ChevronDown, X, Search, FlaskConical
 } from 'lucide-react';
-import { ChatInterface } from './chat-interface';
 import { FormattedMarkdown } from './formatted-markdown';
 import { VerdictForm } from './verdict-form';
 import { useTextSelection } from './use-text-selection';
@@ -480,14 +479,6 @@ export function ResearchView({ session, initialMessages }: ResearchViewProps) {
                 Council
                 {councilAnalyses.length > 0 && <CheckCircle2 className="w-3.5 h-3.5 ml-2 text-emerald-500" />}
               </TabsTrigger>
-              <TabsTrigger
-                value="deliberation"
-                className="h-11 px-0 pb-0 data-[state=active]:shadow-none data-[state=active]:bg-transparent border-b-2 border-transparent data-[state=active]:border-foreground rounded-none text-[13px] font-medium"
-                disabled={status === 'pending' || status === 'discovering' || status === 'researching' || status === 'analyzing'}
-              >
-                <MessageSquare className="w-4 h-4 mr-2" />
-                Chat
-              </TabsTrigger>
             </TabsList>
           </div>
 
@@ -666,16 +657,6 @@ export function ResearchView({ session, initialMessages }: ResearchViewProps) {
               </div>
             </ScrollArea>
           </TabsContent>
-
-          {/* Deliberation Tab */}
-          <TabsContent value="deliberation" className="flex-1 overflow-hidden m-0 p-0">
-            <ChatInterface
-              sessionId={session.id}
-              initialMessages={initialMessages}
-              researchReport={researchReport}
-              disabled={status === 'researching'}
-            />
-          </TabsContent>
         </Tabs>
       </div>
 
@@ -783,6 +764,7 @@ export function ResearchView({ session, initialMessages }: ResearchViewProps) {
         researchReport={researchReport}
         disabled={status === 'researching'}
         initialPrompt={initialPrompt}
+        onClearInitialPrompt={() => setInitialPrompt('')}
       />
     </div>
   );
