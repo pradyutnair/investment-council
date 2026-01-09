@@ -19,10 +19,11 @@ import {
 } from '@/components/ui/alert-dialog';
 import {
   Loader2, FileText, MessageSquare, Users, CheckCircle2, AlertCircle, ArrowRight, Brain,
-  TrendingUp, TrendingDown, ShieldAlert, Sparkles, AlertTriangle, ChevronDown, X, Search, ArrowLeft
+  TrendingUp, TrendingDown, ShieldAlert, Sparkles, AlertTriangle, ChevronDown, X, Search, ArrowLeft, DollarSign
 } from 'lucide-react';
 import { FormattedMarkdown } from './formatted-markdown';
 import { PopupChat } from './popup-chat';
+import { SimulateTab } from './simulate-tab';
 import type { ResearchSession } from '@/src/lib/actions/research';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -234,6 +235,10 @@ export function ResearchView({ session, initialMessages = [] }: ResearchViewProp
                 Council
                 {councilAnalyses.length > 0 && <CheckCircle2 className="w-3 h-3 ml-2 text-emerald-500" />}
               </TabsTrigger>
+              <TabsTrigger value="simulate" className="h-10 px-0 data-[state=active]:shadow-none data-[state=active]:bg-transparent border-b-2 border-transparent data-[state=active]:border-foreground rounded-none text-sm">
+                <DollarSign className="w-4 h-4 mr-2" />
+                Simulate
+              </TabsTrigger>
             </TabsList>
           </div>
 
@@ -343,6 +348,11 @@ export function ResearchView({ session, initialMessages = [] }: ResearchViewProp
                 )}
               </div>
             </ScrollArea>
+          </TabsContent>
+
+          {/* Simulate Tab */}
+          <TabsContent value="simulate" className="flex-1 overflow-hidden m-0">
+            <SimulateTab sessionId={session.id} />
           </TabsContent>
         </Tabs>
       </div>
