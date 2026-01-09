@@ -10,6 +10,7 @@ import {
   getResearchOpportunities,
   insertDiscoveredOpportunities,
 } from '@/src/lib/actions/research';
+import { isTestMode, generateMockThesisStartEvents, MOCK_SESSION_ID } from '@/lib/test-mode/mock-research-data';
 
 export const runtime = 'nodejs';
 export const maxDuration = 600; // 10 minutes for full workflow
@@ -38,6 +39,66 @@ export async function POST(req: NextRequest) {
 
     if (!sessionId) {
       return NextResponse.json({ error: 'sessionId is required' }, { status: 400 });
+    }
+
+    // Test mode: use mock session data without DB call
+    if (isTestMode() && sessionId === MOCK_SESSION_ID) {
+      const mockSession = {
+        id: MOCK_SESSION_ID,
+        user_id: user.id,
+        title: 'Value Investing Discovery',
+        thesis: 'Find deep value opportunities with strong margin of safety, low P/B ratios, and underappreciated assets.',
+        strategy: 'value' as const,
+        status: 'pending' as const,
+        research_report: null,
+        research_started_at: null,
+        research_completed_at: null,
+        council_analyses: [],
+        council_debate: [],
+        council_started_at: null,
+        council_completed_at: null,
+        verdict: null,
+        verdict_note: null,
+        confidence_level: null,
+        finalized_at: null,
+        discovered_opportunities: [],
+        final_verdict: null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+
+      const encoder = new TextEncoder();
+      const stream = new ReadableStream({
+        async start(controller) {
+          try {
+            const sendEvent = (data: any) => {
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
+            };
+
+            for await (const event of generateMockThesisStartEvents(mockSession.strategy || 'general')) {
+              sendEvent(event);
+            }
+
+            controller.close();
+          } catch (error) {
+            console.error('Test mode error:', error);
+            const errorData = JSON.stringify({
+              type: 'error',
+              message: error instanceof Error ? error.message : 'Mock data generation failed',
+            });
+            controller.enqueue(encoder.encode(`data: ${errorData}\n\n`));
+            controller.close();
+          }
+        },
+      });
+
+      return new Response(stream, {
+        headers: {
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+          'Connection': 'keep-alive',
+        },
+      });
     }
 
     // Load session

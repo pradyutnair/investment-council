@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import {
   Loader2, FileText, MessageSquare, Users, CheckCircle2, AlertCircle, ArrowRight, Brain,
-  TrendingUp, TrendingDown, ShieldAlert, Sparkles, AlertTriangle, ChevronDown, X, Search
+  TrendingUp, TrendingDown, ShieldAlert, Sparkles, AlertTriangle, ChevronDown, X, Search, FlaskConical
 } from 'lucide-react';
 import { ChatInterface } from './chat-interface';
 import { FormattedMarkdown } from './formatted-markdown';
@@ -30,6 +30,7 @@ import { PopupChat } from './popup-chat';
 import type { ResearchSession, ResearchOpportunity } from '@/src/lib/actions/research';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { isTestModeClient } from '@/lib/test-mode/mock-research-data';
 
 // Strategy configuration for display
 const STRATEGY_DISPLAY: Record<string, { 
@@ -170,6 +171,15 @@ export function ResearchView({ session, initialMessages }: ResearchViewProps) {
   // Popup chat state
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [initialPrompt, setInitialPrompt] = useState('');
+
+  // Handle chat open/close - reset prompt when closing
+  const handleChatOpenChange = (open: boolean) => {
+    setIsChatOpen(open);
+    if (!open) {
+      // Clear the initial prompt when chat is closed
+      setInitialPrompt('');
+    }
+  };
 
   // Text selection hook for research tab
   const textSelection = useTextSelection((selectedText) => {
@@ -426,6 +436,13 @@ export function ResearchView({ session, initialMessages }: ResearchViewProps) {
             {statusConfig.icon}
             <span>{statusConfig.label}</span>
           </div>
+          {/* Test Mode Badge */}
+          {isTestModeClient() && (
+            <div className="flex items-center gap-1.5 px-2 py-1 rounded-full text-[11px] font-medium border bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20">
+              <FlaskConical className="w-3 h-3" />
+              <span>Test Mode</span>
+            </div>
+          )}
         </div>
         <Button
           variant="ghost"
@@ -438,7 +455,11 @@ export function ResearchView({ session, initialMessages }: ResearchViewProps) {
       </header>
 
       {/* Content */}
-      <div className="flex-1 overflow-hidden">
+      <div 
+        className="flex-1 overflow-hidden"
+        ref={textSelection.containerRef}
+        onMouseUp={textSelection.handleMouseUp}
+      >
         <Tabs defaultValue="research" className="h-full flex flex-col">
           <div className="px-6 border-b border-border">
             <TabsList className="h-11 bg-transparent p-0 gap-6">
@@ -474,8 +495,6 @@ export function ResearchView({ session, initialMessages }: ResearchViewProps) {
           <TabsContent value="research" className="flex-1 overflow-hidden m-0">
             <ScrollArea className="h-full">
               <div
-                ref={textSelection.containerRef}
-                onMouseUp={textSelection.handleMouseUp}
                 className="max-w-3xl mx-auto px-6 py-8"
               >
                 {!researchReport ? (
@@ -744,10 +763,21 @@ export function ResearchView({ session, initialMessages }: ResearchViewProps) {
         onClose={textSelection.hideAskButton}
       />
 
+      {/* Floating Chat Button - shows when research is complete */}
+      {researchReport && !isChatOpen && (
+        <Button
+          onClick={() => setIsChatOpen(true)}
+          className="fixed bottom-6 right-6 h-12 w-12 rounded-full shadow-lg z-40"
+          size="icon"
+        >
+          <MessageSquare className="w-5 h-5" />
+        </Button>
+      )}
+
       {/* Popup Chat */}
       <PopupChat
         open={isChatOpen}
-        onOpenChange={setIsChatOpen}
+        onOpenChange={handleChatOpenChange}
         sessionId={session.id}
         initialMessages={initialMessages}
         researchReport={researchReport}

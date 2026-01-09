@@ -31,16 +31,37 @@ export function PopupChat({
   initialPrompt = '',
 }: PopupChatProps) {
   const [messages, setMessages] = useState(initialMessages);
-  const [input, setInput] = useState(initialPrompt);
+  const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const hasSetInitialPrompt = useRef(false);
 
-  // Update input when initialPrompt changes
+  // Set initial prompt when popup opens with selected text
   useEffect(() => {
-    if (initialPrompt) {
-      setInput(initialPrompt);
+    if (open && initialPrompt && !hasSetInitialPrompt.current) {
+      // Format as a question about the selected text
+      const formattedPrompt = `Regarding this: "${initialPrompt.slice(0, 500)}${initialPrompt.length > 500 ? '...' : ''}"`;
+      setInput(formattedPrompt);
+      hasSetInitialPrompt.current = true;
+      // Focus textarea after a short delay
+      setTimeout(() => {
+        textareaRef.current?.focus();
+        // Move cursor to end
+        textareaRef.current?.setSelectionRange(
+          formattedPrompt.length,
+          formattedPrompt.length
+        );
+      }, 150);
     }
-  }, [initialPrompt]);
+  }, [open, initialPrompt]);
+
+  // Reset the flag when popup closes
+  useEffect(() => {
+    if (!open) {
+      hasSetInitialPrompt.current = false;
+    }
+  }, [open]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -111,16 +132,14 @@ export function PopupChat({
     }
   };
 
-  // Focus textarea when sheet opens
+  // Focus textarea when sheet opens (without initial prompt)
   useEffect(() => {
-    if (open) {
-      // Focus on textarea after a small delay to ensure the sheet is open
+    if (open && !initialPrompt) {
       setTimeout(() => {
-        const textarea = document.querySelector('textarea[data-popup-chat-input]') as HTMLTextAreaElement;
-        textarea?.focus();
+        textareaRef.current?.focus();
       }, 100);
     }
-  }, [open]);
+  }, [open, initialPrompt]);
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -214,12 +233,13 @@ export function PopupChat({
         <div className="border-t border-border p-4 shrink-0">
           <form onSubmit={handleSubmit} className="flex gap-2">
             <Textarea
+              ref={textareaRef}
               data-popup-chat-input
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Ask a question..."
-              rows={1}
-              className="flex-1 resize-none min-h-[40px] max-h-32 text-[13px] rounded-lg"
+              placeholder="Ask about the research..."
+              rows={2}
+              className="flex-1 resize-none min-h-[60px] max-h-32 text-[13px] rounded-lg"
               disabled={disabled || isLoading}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {

@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { getResearchSession } from '@/src/lib/actions/research';
 import { runSpecializedResearch } from '@/src/services/specialized-research';
 import type { ResearchStrategy } from '@/src/types/research';
+import { isTestMode, generateMockSpecializedEvents, MOCK_SESSION_ID } from '@/lib/test-mode/mock-research-data';
 
 export const runtime = 'nodejs';
 export const maxDuration = 600; // 10 minutes for complete specialized research
@@ -25,9 +26,47 @@ export async function POST(req: NextRequest) {
     // Validate strategy
     const validStrategies: ResearchStrategy[] = ['value', 'special-sits', 'distressed', 'general'];
     if (!validStrategies.includes(strategy)) {
-      return NextResponse.json({ 
-        error: `Invalid strategy. Must be one of: ${validStrategies.join(', ')}` 
+      return NextResponse.json({
+        error: `Invalid strategy. Must be one of: ${validStrategies.join(', ')}`
       }, { status: 400 });
+    }
+
+    // Test mode: return mock SSE stream without DB call
+    if (isTestMode() && sessionId === MOCK_SESSION_ID) {
+      const encoder = new TextEncoder();
+      const stream = new ReadableStream({
+        async start(controller) {
+          try {
+            for await (const phase of generateMockSpecializedEvents(strategy as ResearchStrategy)) {
+              const data = JSON.stringify({
+                type: phase.phase,
+                agent: phase.agent,
+                content: phase.content,
+                timestamp: phase.timestamp,
+              });
+              controller.enqueue(encoder.encode(`data: ${data}\n\n`));
+            }
+            controller.close();
+          } catch (error) {
+            console.error('Test mode error:', error);
+            const errorData = JSON.stringify({
+              type: 'error',
+              content: error instanceof Error ? error.message : 'Mock data generation failed',
+              timestamp: new Date().toISOString(),
+            });
+            controller.enqueue(encoder.encode(`data: ${errorData}\n\n`));
+            controller.close();
+          }
+        },
+      });
+
+      return new Response(stream, {
+        headers: {
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+          'Connection': 'keep-alive',
+        },
+      });
     }
 
     // Load session

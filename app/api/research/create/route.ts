@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createResearchSession } from '@/src/lib/actions/research';
 import type { ResearchStrategy } from '@/src/types/research';
+import { isTestMode, MOCK_SESSION_ID } from '@/lib/test-mode/mock-research-data';
 
 export async function POST(req: NextRequest) {
   try {
@@ -21,9 +22,18 @@ export async function POST(req: NextRequest) {
     // Validate strategy
     const validStrategies: ResearchStrategy[] = ['value', 'special-sits', 'distressed', 'general'];
     if (!validStrategies.includes(strategy)) {
-      return NextResponse.json({ 
-        error: `Invalid strategy. Must be one of: ${validStrategies.join(', ')}` 
+      return NextResponse.json({
+        error: `Invalid strategy. Must be one of: ${validStrategies.join(', ')}`
       }, { status: 400 });
+    }
+
+    // Test mode: return mock session ID without database call
+    if (isTestMode()) {
+      return NextResponse.json({
+        sessionId: MOCK_SESSION_ID,
+        strategy,
+        _testMode: true,
+      });
     }
 
     const session = await createResearchSession(
