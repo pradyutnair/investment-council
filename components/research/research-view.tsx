@@ -24,6 +24,9 @@ import {
 import { ChatInterface } from './chat-interface';
 import { FormattedMarkdown } from './formatted-markdown';
 import { VerdictForm } from './verdict-form';
+import { useTextSelection } from './use-text-selection';
+import { TextSelectionAsk } from './text-selection-ask';
+import { PopupChat } from './popup-chat';
 import type { ResearchSession, ResearchOpportunity } from '@/src/lib/actions/research';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -163,6 +166,16 @@ export function ResearchView({ session, initialMessages }: ResearchViewProps) {
   const [isCouncilRunning, setIsCouncilRunning] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Popup chat state
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [initialPrompt, setInitialPrompt] = useState('');
+
+  // Text selection hook for research tab
+  const textSelection = useTextSelection((selectedText) => {
+    setInitialPrompt(selectedText);
+    setIsChatOpen(true);
+  });
 
   // Thesis-based workflow state
   const [opportunities, setOpportunities] = useState<ResearchOpportunity[]>([]);
@@ -460,7 +473,11 @@ export function ResearchView({ session, initialMessages }: ResearchViewProps) {
           {/* Research Tab */}
           <TabsContent value="research" className="flex-1 overflow-hidden m-0">
             <ScrollArea className="h-full">
-              <div className="max-w-3xl mx-auto px-6 py-8">
+              <div
+                ref={textSelection.containerRef}
+                onMouseUp={textSelection.handleMouseUp}
+                className="max-w-3xl mx-auto px-6 py-8"
+              >
                 {!researchReport ? (
                   <div className="py-12">
                     {researchError ? (
@@ -718,6 +735,25 @@ export function ResearchView({ session, initialMessages }: ResearchViewProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Text Selection Ask Popup */}
+      <TextSelectionAsk
+        show={textSelection.showAskButton}
+        position={textSelection.position}
+        onAsk={textSelection.handleAsk}
+        onClose={textSelection.hideAskButton}
+      />
+
+      {/* Popup Chat */}
+      <PopupChat
+        open={isChatOpen}
+        onOpenChange={setIsChatOpen}
+        sessionId={session.id}
+        initialMessages={initialMessages}
+        researchReport={researchReport}
+        disabled={status === 'researching'}
+        initialPrompt={initialPrompt}
+      />
     </div>
   );
 }
