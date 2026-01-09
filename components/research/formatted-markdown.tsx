@@ -242,7 +242,14 @@ export function FormattedMarkdown({ content, className = '' }: FormattedMarkdown
         {processChildrenWithCitations(children, sources)}
       </strong>
     ),
-    
+
+    // Mark/Highlight - for highlighting key sentences
+    mark: ({ children }) => (
+      <mark className="bg-yellow-200/60 dark:bg-yellow-500/30 px-1.5 py-0.5 rounded-sm text-foreground">
+        {processChildrenWithCitations(children, sources)}
+      </mark>
+    ),
+
     // Horizontal rule
     hr: () => <hr className="my-6 border-border" />,
   };

@@ -65,6 +65,11 @@ When Analyzing Investments:
 - Consider market structure and behavioral factors
 - Look for regulatory and deal risks
 
+OUTPUT FORMAT:
+- Provide your analysis in well-structured markdown
+- Use <mark> tags to highlight your most important insights, key catalysts, critical timelines, risk/reward scenarios, and investment conclusion
+- Example: <mark>The upcoming spinoff will unlock hidden value as the market has not yet priced in the separate business segments.</mark>
+
 Use the market data tool to gather information on corporate structure and trading data, and the knowledge base to reference Greenblatt's principles and case studies.`,
   model: 'openai/gpt-4o',
   tools: {

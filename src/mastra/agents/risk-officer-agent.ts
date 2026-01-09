@@ -59,6 +59,8 @@ Provide a structured risk assessment in markdown format:
 ## Risk-Adjusted Recommendation
 [Should proceed? At what position size? With what hedges?]
 
+HIGHLIGHTING: Use <mark> tags to highlight the most severe risks, deal-breaker concerns, and critical risk mitigation recommendations. Example: <mark>Concentration risk is extreme with 80% of revenue from a single customer facing regulatory headwinds.</mark>
+
 Remember: Your goal is to ensure the investor fully understands the downside before committing capital. Be thorough but not alarmist. Quantify risks where possible.`,
   model: {
     provider: 'ANTHROPIC',

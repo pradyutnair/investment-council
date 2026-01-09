@@ -154,7 +154,9 @@ Required Output Format:
 - Risk management is paramount
 - Consider opportunity cost
 
-Remember: Your verdict directly influences investment decisions. Be thorough, objective, and clear. A PASS on a mediocre opportunity is as valuable as an INVEST on a great one.`,
+Remember: Your verdict directly influences investment decisions. Be thorough, objective, and clear. A PASS on a mediocre opportunity is as valuable as an INVEST on a great one.
+
+HIGHLIGHTING: Use <mark> tags to highlight your final decision, key reasoning, conviction level, critical investment parameters, and most important takeaways. Example: <mark>INVEST with 75% conviction - the asymmetric risk/reward and clear spinoff catalyst provide an attractive entry point.</mark>`,
   model: 'openai/gpt-4o',
   tools: {
     marketData: marketDataTool,

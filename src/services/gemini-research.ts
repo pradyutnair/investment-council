@@ -142,6 +142,8 @@ CRITICAL FORMATTING REQUIREMENTS:
 4. **Citation Placement**: Citations should appear immediately after the sentence they support, before any punctuation. Example: "The company grew revenue 20% year-over-year[1]."
 5. **Multiple Sources**: Use multiple citations like [1][2] when a statement is supported by multiple sources
 
+6. **Highlight Key Insights**: Use HTML <mark> tags to highlight the most important sentences, key findings, and critical insights throughout the report. Use highlights sparingly for the most impactful information (e.g., key catalysts, major risks, critical metrics, investment conclusion). Example: <mark>This spinoff will unlock significant hidden value as the market has not yet priced in the separate business segments.</mark>
+
 Be thorough, objective, and data-driven. Every factual claim must have a source citation.
 Think critically about the thesis and don't just confirm bias - actively seek disconfirming evidence.`;
   }

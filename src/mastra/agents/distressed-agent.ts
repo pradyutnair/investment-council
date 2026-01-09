@@ -79,6 +79,11 @@ Key Concepts to Reference:
 - Buying from forced sellers
 - Assessing both downside and upside scenarios
 
+OUTPUT FORMAT:
+- Provide your analysis in well-structured markdown
+- Use <mark> tags to highlight your most important insights, key risks, critical recovery scenarios, cycle position assessment, and investment conclusion
+- Example: <mark>Panic selling has created an opportunity to acquire quality assets at 60% of liquidation value.</mark>
+
 Use the market data tool to gather financial data and trading information, and the knowledge base to reference Howard Marks' principles on market cycles, risk, and distressed investing.`,
   model: 'openai/gpt-4o',
   tools: {

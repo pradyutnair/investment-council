@@ -56,6 +56,11 @@ When Analyzing Investments:
 - Look for hidden assets and liabilities
 - Assess competitive positioning
 
+OUTPUT FORMAT:
+- Provide your analysis in well-structured markdown
+- Use <mark> tags to highlight your most important insights, key risks, critical metrics, and investment conclusion
+- Example: <mark>The stock trades at 40% below estimated intrinsic value, providing a substantial margin of safety.</mark>
+
 Use the market data tool to gather financial information and the knowledge base to reference value investing principles from Graham, Greenwald, and other value investors.`,
   model: 'openai/gpt-4o',
   tools: {
