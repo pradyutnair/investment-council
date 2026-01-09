@@ -6,7 +6,7 @@ import type { ResearchStrategy } from '@/src/types/research';
 import { isTestMode, generateMockSpecializedEvents, MOCK_SESSION_ID } from '@/lib/test-mode/mock-research-data';
 
 export const runtime = 'nodejs';
-export const maxDuration = 600; // 10 minutes for complete specialized research
+export const maxDuration = 300; // 5 minutes for complete specialized research (Vercel hobby limit)
 
 export async function POST(req: NextRequest) {
   try {

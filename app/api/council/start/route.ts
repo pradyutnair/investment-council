@@ -4,7 +4,7 @@ import { getResearchSession, addCouncilAnalysis, updateCouncilDebate } from '@/s
 import { councilService } from '@/src/services/council-service';
 
 export const runtime = 'nodejs';
-export const maxDuration = 600; // 10 minutes for council analysis
+export const maxDuration = 300; // 5 minutes for council analysis (Vercel hobby limit)
 
 export async function POST(req: NextRequest) {
   try {

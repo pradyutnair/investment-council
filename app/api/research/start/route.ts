@@ -4,7 +4,7 @@ import { getResearchSession, updateResearchReport } from '@/lib/actions/research
 import { geminiResearch } from '@/src/services/gemini-research';
 
 export const runtime = 'nodejs';
-export const maxDuration = 600; // 10 minutes for deep research
+export const maxDuration = 300; // 5 minutes for deep research (Vercel hobby limit)
 
 export async function POST(req: NextRequest) {
   try {

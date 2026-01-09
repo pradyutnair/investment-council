@@ -4,7 +4,7 @@ import { runResearch } from '@/src/mastra/workflows/thesis-based-investment';
 import { getResearchSession } from '@/src/lib/actions/research';
 
 export const runtime = 'nodejs';
-export const maxDuration = 600; // 10 minutes
+export const maxDuration = 300; // 5 minutes (Vercel hobby limit)
 
 /**
  * Simple research API
