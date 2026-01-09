@@ -6,7 +6,22 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, ArrowRight, TrendingUp, Sparkles, AlertTriangle, Search, Check } from 'lucide-react';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
+import {
+  Loader2,
+  ArrowRight,
+  TrendingUp,
+  Sparkles,
+  AlertTriangle,
+  Search,
+  ChevronDown,
+  Zap,
+  Settings2,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import type { ResearchStrategy } from '@/src/types/research';
@@ -14,76 +29,107 @@ import type { ResearchStrategy } from '@/src/types/research';
 interface StrategyOption {
   id: ResearchStrategy;
   name: string;
+  shortName: string;
   description: string;
   icon: React.ReactNode;
   color: string;
-  bgColor: string;
-  examples: string[];
+  hoverColor: string;
+  bgGradient: string;
+  borderColor: string;
+  defaultThesis: string;
+  features: string[];
+  requiresThesis: boolean;
 }
 
 const STRATEGY_OPTIONS: StrategyOption[] = [
   {
     id: 'value',
     name: 'Value Investing',
-    description: 'Graham & Greenwald approach. Margin of safety, intrinsic value focus.',
-    icon: <TrendingUp className="w-5 h-5" />,
+    shortName: 'Value',
+    description: 'Benjamin Graham & Bruce Greenwald style. Finds undervalued stocks with margin of safety.',
+    icon: <TrendingUp className="w-6 h-6" />,
     color: 'text-emerald-600 dark:text-emerald-400',
-    bgColor: 'bg-emerald-500/10 border-emerald-500/30 hover:bg-emerald-500/20',
-    examples: ['Deep value in shipping sector', 'P/B < 1 opportunities', 'Hidden asset plays'],
+    hoverColor: 'hover:border-emerald-500/50 hover:bg-emerald-500/5',
+    bgGradient: 'from-emerald-500/20 to-emerald-500/5',
+    borderColor: 'border-emerald-500/40',
+    defaultThesis: 'Find deep value opportunities with strong margin of safety, low P/B ratios, and underappreciated assets.',
+    features: ['P/B < 1.5 screening', 'Asset-based valuation', 'Earnings power analysis'],
+    requiresThesis: false,
   },
   {
     id: 'special-sits',
     name: 'Special Situations',
-    description: 'Greenblatt style event-driven. Spinoffs, mergers, restructuring.',
-    icon: <Sparkles className="w-5 h-5" />,
+    shortName: 'Special Sits',
+    description: 'Joel Greenblatt style event-driven investing. Spinoffs, mergers, and restructurings.',
+    icon: <Sparkles className="w-6 h-6" />,
     color: 'text-purple-600 dark:text-purple-400',
-    bgColor: 'bg-purple-500/10 border-purple-500/30 hover:bg-purple-500/20',
-    examples: ['Recent spinoff opportunities', 'Merger arbitrage plays', 'Corporate restructuring'],
+    hoverColor: 'hover:border-purple-500/50 hover:bg-purple-500/5',
+    bgGradient: 'from-purple-500/20 to-purple-500/5',
+    borderColor: 'border-purple-500/40',
+    defaultThesis: 'Discover special situation opportunities: spinoffs, merger arbitrage, restructurings, and event-driven plays.',
+    features: ['Spinoff tracking', 'Merger arbitrage', 'Activist situations'],
+    requiresThesis: false,
   },
   {
     id: 'distressed',
-    name: 'Distressed',
-    description: 'Howard Marks approach. Contrarian, cycle-aware, turnaround focus.',
-    icon: <AlertTriangle className="w-5 h-5" />,
+    name: 'Distressed Investing',
+    shortName: 'Distressed',
+    description: 'Howard Marks & Oaktree style. Contrarian bets on turnarounds and cycle bottoms.',
+    icon: <AlertTriangle className="w-6 h-6" />,
     color: 'text-orange-600 dark:text-orange-400',
-    bgColor: 'bg-orange-500/10 border-orange-500/30 hover:bg-orange-500/20',
-    examples: ['Beaten-down sectors', 'Turnaround candidates', 'Distressed debt plays'],
+    hoverColor: 'hover:border-orange-500/50 hover:bg-orange-500/5',
+    bgGradient: 'from-orange-500/20 to-orange-500/5',
+    borderColor: 'border-orange-500/40',
+    defaultThesis: 'Find distressed opportunities: turnaround situations, beaten-down sectors, and contrarian plays at cycle bottoms.',
+    features: ['Turnaround candidates', 'Sector distress', 'Cycle analysis'],
+    requiresThesis: false,
   },
   {
     id: 'general',
-    name: 'General Research',
-    description: 'Comprehensive analysis without a specific strategy lens.',
-    icon: <Search className="w-5 h-5" />,
+    name: 'Custom Research',
+    shortName: 'Custom',
+    description: 'Deep research on your specific thesis. Requires your investment idea.',
+    icon: <Search className="w-6 h-6" />,
     color: 'text-blue-600 dark:text-blue-400',
-    bgColor: 'bg-blue-500/10 border-blue-500/30 hover:bg-blue-500/20',
-    examples: ['Exploratory research', 'Industry analysis', 'Competitive dynamics'],
+    hoverColor: 'hover:border-blue-500/50 hover:bg-blue-500/5',
+    bgGradient: 'from-blue-500/20 to-blue-500/5',
+    borderColor: 'border-blue-500/40',
+    defaultThesis: '',
+    features: ['Your thesis', 'Deep research', 'Multi-angle analysis'],
+    requiresThesis: true,
   },
 ];
 
 export function ThesisForm() {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submittingStrategy, setSubmittingStrategy] = useState<ResearchStrategy | null>(null);
+  const [selectedStrategy, setSelectedStrategy] = useState<ResearchStrategy | null>(null);
   const [title, setTitle] = useState('');
   const [thesis, setThesis] = useState('');
-  const [strategy, setStrategy] = useState<ResearchStrategy>('general');
+  const [showCustomize, setShowCustomize] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleQuickStart = async (strategy: ResearchStrategy) => {
+    const option = STRATEGY_OPTIONS.find(s => s.id === strategy);
+    if (!option) return;
 
-    if (!thesis.trim()) {
-      toast.error('Please enter your investment thesis');
+    // For general/custom, require thesis
+    if (option.requiresThesis) {
+      setSelectedStrategy(strategy);
+      setShowCustomize(true);
       return;
     }
 
     setIsSubmitting(true);
+    setSubmittingStrategy(strategy);
 
     try {
       const response = await fetch('/api/research/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          title: title.trim() || thesis.substring(0, 100) + '...',
-          thesis,
+          title: `${option.name} Discovery`,
+          thesis: option.defaultThesis,
           strategy,
         }),
       });
@@ -94,117 +140,320 @@ export function ThesisForm() {
       }
 
       const { sessionId } = await response.json();
-      router.push(`/dashboard/research/${sessionId}?strategy=${strategy}`);
+      router.push(`/dashboard/research/${sessionId}`);
     } catch (error) {
       console.error('Error creating research session:', error);
       toast.error(error instanceof Error ? error.message : 'An error occurred');
     } finally {
       setIsSubmitting(false);
+      setSubmittingStrategy(null);
     }
   };
 
-  const selectedStrategy = STRATEGY_OPTIONS.find(s => s.id === strategy);
+  const handleCustomSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    const option = STRATEGY_OPTIONS.find(s => s.id === selectedStrategy);
+    if (!option) return;
+
+    // Only require thesis for general research
+    if (option.requiresThesis && !thesis.trim()) {
+      toast.error('Please enter your investment thesis');
+      return;
+    }
+
+    setIsSubmitting(true);
+    setSubmittingStrategy(selectedStrategy);
+
+    try {
+      const finalThesis = thesis.trim() || option.defaultThesis;
+      const finalTitle = title.trim() || `${option.name} Research`;
+
+      const response = await fetch('/api/research/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: finalTitle,
+          thesis: finalThesis,
+          strategy: selectedStrategy,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to create research session');
+      }
+
+      const { sessionId } = await response.json();
+      router.push(`/dashboard/research/${sessionId}`);
+    } catch (error) {
+      console.error('Error creating research session:', error);
+      toast.error(error instanceof Error ? error.message : 'An error occurred');
+    } finally {
+      setIsSubmitting(false);
+      setSubmittingStrategy(null);
+    }
+  };
+
+  const currentOption = selectedStrategy 
+    ? STRATEGY_OPTIONS.find(s => s.id === selectedStrategy) 
+    : null;
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Strategy Selection */}
-      <div className="space-y-3">
-        <Label className="text-[13px] font-medium">
-          Research Strategy
-        </Label>
-        <div className="grid grid-cols-2 gap-3">
-          {STRATEGY_OPTIONS.map((option) => (
-            <button
-              key={option.id}
-              type="button"
-              onClick={() => setStrategy(option.id)}
-              className={cn(
-                'relative flex flex-col items-start p-4 rounded-lg border-2 transition-all text-left',
-                strategy === option.id
-                  ? `${option.bgColor} border-current ${option.color}`
-                  : 'border-border hover:border-muted-foreground/50 bg-background'
-              )}
-            >
-              <div className={cn('flex items-center gap-2 mb-1', option.color)}>
-                {option.icon}
-                <span className="font-medium text-[13px]">{option.name}</span>
-              </div>
-              <p className="text-[11px] text-muted-foreground leading-relaxed">
-                {option.description}
-              </p>
-              {strategy === option.id && (
-                <div className={cn('absolute top-2 right-2', option.color)}>
-                  <Check className="w-4 h-4" />
-                </div>
-              )}
-            </button>
-          ))}
-        </div>
-        {selectedStrategy && (
-          <p className="text-[11px] text-muted-foreground">
-            <span className="font-medium">Example queries:</span>{' '}
-            {selectedStrategy.examples.join(' • ')}
-          </p>
-        )}
-      </div>
-
-      {/* Title */}
-      <div className="space-y-2">
-        <Label htmlFor="title" className="text-[13px] font-medium">
-          Title <span className="text-muted-foreground font-normal">(optional)</span>
-        </Label>
-        <Input
-          id="title"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="e.g., Spinoff opportunity in industrial sector"
-          className="h-10"
-        />
-      </div>
-
-      {/* Thesis */}
-      <div className="space-y-2">
-        <Label htmlFor="thesis" className="text-[13px] font-medium">
-          Investment Thesis
-        </Label>
-        <Textarea
-          id="thesis"
-          value={thesis}
-          onChange={(e) => setThesis(e.target.value)}
-          placeholder={`Describe your investment hypothesis...
-
-${selectedStrategy?.examples.map(e => `• ${e}`).join('\n') || 'Examples:\n• Research special situation opportunities\n• Analyze deep value plays\n• Investigate catalyst-driven opportunities'}`}
-          rows={6}
-          className="resize-none text-[14px] leading-relaxed"
-          required
-        />
-        <p className="text-[12px] text-muted-foreground">
-          The {selectedStrategy?.name || 'research'} agent will analyze this from its specialized perspective, 
-          then the council (Skeptic + Risk Officer) will critique the findings.
+    <div className="space-y-8">
+      {/* Header */}
+      <div className="text-center space-y-2">
+        <h2 className="text-xl font-semibold tracking-tight">Start New Research</h2>
+        <p className="text-sm text-muted-foreground max-w-md mx-auto">
+          Choose a strategy and let the AI council discover and analyze opportunities for you.
         </p>
       </div>
 
-      {/* Submit Button */}
-      <Button
-        type="submit"
-        disabled={isSubmitting}
-        className={cn(
-          'w-full h-11 text-[14px] font-medium transition-colors',
-          strategy !== 'general' && selectedStrategy?.color
-        )}
-      >
-        {isSubmitting ? (
-          <>
-            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-            Creating Session...
-          </>
-        ) : (
-          <>
-            Start {selectedStrategy?.name || 'Research'}
-            <ArrowRight className="w-4 h-4 ml-2" />
-          </>
-        )}
-      </Button>
-    </form>
+      {/* Strategy Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {STRATEGY_OPTIONS.map((option) => {
+          const isLoading = isSubmitting && submittingStrategy === option.id;
+          const isSelected = selectedStrategy === option.id;
+
+          return (
+            <div
+              key={option.id}
+              className={cn(
+                'group relative rounded-xl border-2 bg-card transition-all duration-200',
+                isSelected 
+                  ? `${option.borderColor} bg-gradient-to-br ${option.bgGradient}` 
+                  : `border-border ${option.hoverColor}`,
+                isLoading && 'opacity-80'
+              )}
+            >
+              {/* Card Content */}
+              <div className="p-5 space-y-4">
+                {/* Header */}
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className={cn(
+                      'p-2.5 rounded-lg bg-gradient-to-br',
+                      option.bgGradient,
+                      option.color
+                    )}>
+                      {option.icon}
+                    </div>
+                    <div>
+                      <h3 className={cn('font-semibold text-base', option.color)}>
+                        {option.name}
+                      </h3>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {option.requiresThesis ? 'Requires your thesis' : 'Autonomous discovery'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Description */}
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  {option.description}
+                </p>
+
+                {/* Features */}
+                <div className="flex flex-wrap gap-2">
+                  {option.features.map((feature, idx) => (
+                    <span
+                      key={idx}
+                      className={cn(
+                        'text-xs px-2 py-1 rounded-md',
+                        'bg-muted/50 text-muted-foreground'
+                      )}
+                    >
+                      {feature}
+                    </span>
+                  ))}
+                </div>
+
+                {/* Actions */}
+                <div className="flex items-center gap-2 pt-2">
+                  {option.requiresThesis ? (
+                    <Button
+                      onClick={() => {
+                        setSelectedStrategy(option.id);
+                        setShowCustomize(true);
+                      }}
+                      disabled={isSubmitting}
+                      className="flex-1 h-10"
+                      variant="outline"
+                    >
+                      <Search className="w-4 h-4 mr-2" />
+                      Enter Thesis
+                    </Button>
+                  ) : (
+                    <>
+                      <Button
+                        onClick={() => handleQuickStart(option.id)}
+                        disabled={isSubmitting}
+                        className={cn('flex-1 h-10', option.color)}
+                      >
+                        {isLoading ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Starting...
+                          </>
+                        ) : (
+                          <>
+                            <Zap className="w-4 h-4 mr-2" />
+                            Quick Start
+                          </>
+                        )}
+                      </Button>
+                      <Button
+                        onClick={() => {
+                          setSelectedStrategy(option.id);
+                          setShowCustomize(true);
+                          setThesis('');
+                          setTitle('');
+                        }}
+                        disabled={isSubmitting}
+                        variant="outline"
+                        size="icon"
+                        className="h-10 w-10"
+                        title="Customize"
+                      >
+                        <Settings2 className="w-4 h-4" />
+                      </Button>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Customization Panel */}
+      {showCustomize && currentOption && (
+        <div className={cn(
+          'rounded-xl border-2 p-6 space-y-5 animate-in fade-in slide-in-from-top-2 duration-200',
+          currentOption.borderColor,
+          'bg-gradient-to-br',
+          currentOption.bgGradient
+        )}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className={cn('p-2 rounded-lg', currentOption.color, 'bg-background/50')}>
+                {currentOption.icon}
+              </div>
+              <div>
+                <h3 className="font-semibold">{currentOption.name}</h3>
+                <p className="text-xs text-muted-foreground">
+                  {currentOption.requiresThesis ? 'Enter your thesis below' : 'Customize your research (optional)'}
+                </p>
+              </div>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setShowCustomize(false);
+                setSelectedStrategy(null);
+              }}
+              className="text-muted-foreground"
+            >
+              Cancel
+            </Button>
+          </div>
+
+          <form onSubmit={handleCustomSubmit} className="space-y-4">
+            {/* Title (always optional) */}
+            <div className="space-y-2">
+              <Label htmlFor="title" className="text-sm font-medium">
+                Title <span className="text-muted-foreground font-normal">(optional)</span>
+              </Label>
+              <Input
+                id="title"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder={`e.g., ${currentOption.name} - Q1 2026`}
+                className="h-10 bg-background/50"
+              />
+            </div>
+
+            {/* Thesis */}
+            <div className="space-y-2">
+              <Label htmlFor="thesis" className="text-sm font-medium">
+                {currentOption.requiresThesis ? 'Investment Thesis' : 'Custom Focus'}{' '}
+                {!currentOption.requiresThesis && (
+                  <span className="text-muted-foreground font-normal">(optional)</span>
+                )}
+              </Label>
+              <Textarea
+                id="thesis"
+                value={thesis}
+                onChange={(e) => setThesis(e.target.value)}
+                placeholder={
+                  currentOption.requiresThesis
+                    ? 'Describe your investment hypothesis...\n\nExamples:\n• Analyze AAPL as a value investment\n• Research the shipping industry outlook\n• Investigate small-cap biotech opportunities'
+                    : `Leave blank to use default strategy, or specify focus:\n\n${currentOption.defaultThesis}`
+                }
+                rows={5}
+                className="resize-none text-sm leading-relaxed bg-background/50"
+                required={currentOption.requiresThesis}
+              />
+              {!currentOption.requiresThesis && (
+                <p className="text-xs text-muted-foreground">
+                  Leave blank for autonomous discovery, or add specific criteria.
+                </p>
+              )}
+            </div>
+
+            {/* Submit */}
+            <Button
+              type="submit"
+              disabled={isSubmitting}
+              className={cn('w-full h-11', currentOption.color)}
+            >
+              {isSubmitting && submittingStrategy === currentOption.id ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Starting Research...
+                </>
+              ) : (
+                <>
+                  Start {currentOption.shortName} Research
+                  <ArrowRight className="w-4 h-4 ml-2" />
+                </>
+              )}
+            </Button>
+          </form>
+        </div>
+      )}
+
+      {/* Info Footer */}
+      <div className="text-center">
+        <Collapsible>
+          <CollapsibleTrigger className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
+            <span>How does this work?</span>
+            <ChevronDown className="w-3 h-3" />
+          </CollapsibleTrigger>
+          <CollapsibleContent className="pt-4">
+            <div className="max-w-lg mx-auto text-left bg-muted/30 rounded-lg p-4 space-y-3 text-sm text-muted-foreground">
+              <div className="flex items-start gap-3">
+                <span className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded">1</span>
+                <p><strong>Discovery:</strong> The screener agent finds opportunities matching your strategy.</p>
+              </div>
+              <div className="flex items-start gap-3">
+                <span className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded">2</span>
+                <p><strong>Deep Research:</strong> Gemini conducts comprehensive research on top candidates.</p>
+              </div>
+              <div className="flex items-start gap-3">
+                <span className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded">3</span>
+                <p><strong>Council Critique:</strong> Skeptic & Risk Officer challenge the findings.</p>
+              </div>
+              <div className="flex items-start gap-3">
+                <span className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded">4</span>
+                <p><strong>Verdict:</strong> Final investment recommendation with conviction level.</p>
+              </div>
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
+      </div>
+    </div>
   );
 }

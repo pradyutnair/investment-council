@@ -9,7 +9,7 @@ export interface ResearchSession {
   title: string
   thesis: string
   strategy: ResearchStrategy
-  status: 'pending' | 'researching' | 'council_gather' | 'council_debate' | 'deliberation' | 'finalized'
+  status: 'pending' | 'discovering' | 'researching' | 'analyzing' | 'deliberation' | 'finalized'
   research_report: string | null
   research_started_at: string | null
   research_completed_at: string | null
@@ -21,6 +21,32 @@ export interface ResearchSession {
   verdict_note: string | null
   confidence_level: string | null
   finalized_at: string | null
+  discovered_opportunities: any[]
+  final_verdict: any
+  created_at: string
+  updated_at: string
+}
+
+export interface ResearchOpportunity {
+  id: string
+  session_id: string
+  ticker: string
+  company_name: string
+  thesis: string
+  type: string
+  key_metrics: Record<string, number>
+  risk_level: 'low' | 'medium' | 'high'
+  score: number | null
+  research_report: string | null
+  strategy_analysis: string | null
+  critiques: {
+    skeptic?: { content: string; agent: string }
+    risk_officer?: { content: string; agent: string }
+  }
+  verdict: string | null
+  final_score: number | null
+  status: 'pending' | 'researching' | 'analyzing' | 'completed' | 'failed'
+  errors: string[]
   created_at: string
   updated_at: string
 }
@@ -211,4 +237,180 @@ export async function createDeliberationMessage(
 
   if (error) throw error
   return data
+}
+
+// ============================================================================
+// THESIS-BASED WORKFLOW FUNCTIONS
+// ============================================================================
+
+/**
+ * Get all opportunities for a research session
+ */
+export async function getResearchOpportunities(sessionId: string): Promise<ResearchOpportunity[]> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user) throw new Error('Not authenticated')
+
+  const { data, error } = await supabase
+    .from('research_opportunities')
+    .select('*')
+    .eq('session_id', sessionId)
+    .order('score', { ascending: false, nullsFirst: false })
+
+  if (error) throw error
+  return data || []
+}
+
+/**
+ * Insert discovered opportunities for a session
+ */
+export async function insertDiscoveredOpportunities(
+  sessionId: string,
+  opportunities: Array<{
+    ticker: string
+    companyName: string
+    thesis: string
+    type: string
+    keyMetrics: Record<string, number>
+    riskLevel: 'low' | 'medium' | 'high'
+    score: number
+  }>
+): Promise<void> {
+  const supabase = await createClient()
+
+  const records = opportunities.map(opp => ({
+    session_id: sessionId,
+    ticker: opp.ticker,
+    company_name: opp.companyName,
+    thesis: opp.thesis,
+    type: opp.type,
+    key_metrics: opp.keyMetrics,
+    risk_level: opp.riskLevel,
+    score: opp.score,
+    status: 'pending' as const,
+  }))
+
+  const { error } = await supabase
+    .from('research_opportunities')
+    .insert(records)
+
+  if (error) throw error
+}
+
+/**
+ * Update a single opportunity with analysis results
+ */
+export async function updateOpportunityAnalysis(
+  opportunityId: string,
+  data: {
+    research_report?: string
+    strategy_analysis?: string
+    critiques?: {
+      skeptic?: { content: string; agent: string }
+      risk_officer?: { content: string; agent: string }
+    }
+    verdict?: string
+    final_score?: number
+    status?: 'pending' | 'researching' | 'analyzing' | 'completed' | 'failed'
+    errors?: string[]
+  }
+): Promise<void> {
+  const supabase = await createClient()
+
+  const updateData: Record<string, any> = {
+    ...data,
+    updated_at: new Date().toISOString(),
+  }
+
+  const { error } = await supabase
+    .from('research_opportunities')
+    .update(updateData)
+    .eq('id', opportunityId)
+
+  if (error) throw error
+}
+
+/**
+ * Update session status and discovered opportunities
+ */
+export async function updateSessionDiscoveredOpportunities(
+  sessionId: string,
+  opportunities: any[]
+): Promise<void> {
+  const supabase = await createClient()
+
+  const { error } = await supabase
+    .from('research_sessions')
+    .update({
+      discovered_opportunities: opportunities,
+      status: 'researching',
+      research_started_at: new Date().toISOString(),
+    })
+    .eq('id', sessionId)
+
+  if (error) throw error
+}
+
+/**
+ * Set session final verdict
+ */
+export async function setSessionFinalVerdict(
+  sessionId: string,
+  finalVerdict: {
+    decision: 'invest' | 'pass' | 'watch'
+    confidence: number
+    topPick: string
+    rationale: string
+  }
+): Promise<void> {
+  const supabase = await createClient()
+
+  const { error } = await supabase
+    .from('research_sessions')
+    .update({
+      final_verdict: {
+        ...finalVerdict,
+        timestamp: new Date().toISOString(),
+      },
+      status: 'deliberation',
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', sessionId)
+
+  if (error) throw error
+}
+
+/**
+ * Update session status
+ */
+export async function updateSessionStatus(
+  sessionId: string,
+  status: 'pending' | 'discovering' | 'researching' | 'analyzing' | 'deliberation' | 'finalized'
+): Promise<void> {
+  const supabase = await createClient()
+
+  const updateData: Record<string, any> = {
+    status,
+    updated_at: new Date().toISOString(),
+  }
+
+  if (status === 'discovering') {
+    // No additional fields
+  } else if (status === 'researching') {
+    updateData.research_started_at = new Date().toISOString()
+  } else if (status === 'analyzing') {
+    updateData.research_completed_at = new Date().toISOString()
+  } else if (status === 'deliberation') {
+    updateData.council_completed_at = new Date().toISOString()
+  } else if (status === 'finalized') {
+    updateData.finalized_at = new Date().toISOString()
+  }
+
+  const { error } = await supabase
+    .from('research_sessions')
+    .update(updateData)
+    .eq('id', sessionId)
+
+  if (error) throw error
 }

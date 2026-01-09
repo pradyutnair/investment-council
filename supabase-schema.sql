@@ -19,14 +19,16 @@ CREATE TABLE IF NOT EXISTS research_sessions (
   -- Research input (thesis-based, not company-specific)
   title TEXT NOT NULL DEFAULT 'New Research',
   thesis TEXT NOT NULL,
+  strategy TEXT CHECK (strategy IN ('value', 'special-sits', 'distressed', 'general')) DEFAULT 'general',
 
   -- Workflow stages
-  status TEXT NOT NULL DEFAULT 'researching' CHECK (status IN (
-    'researching',      -- Gemini Deep Research in progress
-    'council_gather',   -- Council agents analyzing
-    'council_debate',   -- Council agents debating
-    'deliberation',     -- User reviewing and chatting
-    'finalized'         -- Final verdict reached
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN (
+    'pending',         -- Session created, not started
+    'discovering',     -- Finding opportunities from thesis
+    'researching',     -- Researching opportunities
+    'analyzing',       -- Strategy and critique agents analyzing
+    'deliberation',    -- User reviewing and chatting
+    'finalized'        -- Final verdict reached
   )),
 
   -- Research phase (Gemini Deep Research output)
@@ -47,6 +49,10 @@ CREATE TABLE IF NOT EXISTS research_sessions (
   verdict_note TEXT,
   confidence_level TEXT CHECK (confidence_level IS NULL OR confidence_level IN ('high', 'medium', 'low')),
   finalized_at TIMESTAMP WITH TIME ZONE,
+
+  -- Thesis-based workflow columns
+  discovered_opportunities JSONB DEFAULT '[]'::jsonb,
+  final_verdict JSONB,
 
   -- Metadata
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -102,6 +108,68 @@ CREATE POLICY "Users can create deliberation messages in own sessions" ON delibe
   FOR INSERT WITH CHECK (session_id IN (SELECT id FROM research_sessions WHERE user_id = auth.uid()));
 
 -- ============================================================================
+-- RESEARCH OPPORTUNITIES TABLE (for thesis-based workflow)
+-- ============================================================================
+
+-- Individual opportunities discovered and analyzed within a research session
+CREATE TABLE IF NOT EXISTS research_opportunities (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  session_id UUID NOT NULL REFERENCES research_sessions(id) ON DELETE CASCADE,
+
+  -- Opportunity details
+  ticker TEXT NOT NULL,
+  company_name TEXT NOT NULL,
+  thesis TEXT NOT NULL,
+  type TEXT NOT NULL,
+  key_metrics JSONB DEFAULT '{}'::jsonb,
+  risk_level TEXT CHECK (risk_level IN ('low', 'medium', 'high')),
+  score INTEGER,
+
+  -- Analysis results
+  research_report TEXT,
+  strategy_analysis TEXT,
+  critiques JSONB DEFAULT '{}'::jsonb, -- { skeptic: {...}, risk_officer: {...} }
+  verdict TEXT,
+  final_score INTEGER,
+
+  -- Status tracking
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN (
+    'pending',
+    'researching',
+    'analyzing',
+    'completed',
+    'failed'
+  )),
+  errors JSONB DEFAULT '[]'::jsonb,
+
+  -- Metadata
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Indexes for research_opportunities
+CREATE INDEX IF NOT EXISTS idx_research_opportunities_session_id ON research_opportunities(session_id);
+CREATE INDEX IF NOT EXISTS idx_research_opportunities_ticker ON research_opportunities(ticker);
+CREATE INDEX IF NOT EXISTS idx_research_opportunities_status ON research_opportunities(status);
+CREATE INDEX IF NOT EXISTS idx_research_opportunities_score ON research_opportunities(score DESC);
+
+-- Enable RLS for research_opportunities
+ALTER TABLE research_opportunities ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policies for research_opportunities
+CREATE POLICY "Users can view opportunities from own sessions" ON research_opportunities
+  FOR SELECT USING (session_id IN (SELECT id FROM research_sessions WHERE user_id = auth.uid()));
+
+CREATE POLICY "Users can create opportunities in own sessions" ON research_opportunities
+  FOR INSERT WITH CHECK (session_id IN (SELECT id FROM research_sessions WHERE user_id = auth.uid()));
+
+CREATE POLICY "Users can update opportunities in own sessions" ON research_opportunities
+  FOR UPDATE USING (session_id IN (SELECT id FROM research_sessions WHERE user_id = auth.uid()));
+
+CREATE POLICY "Users can delete opportunities in own sessions" ON research_opportunities
+  FOR DELETE USING (session_id IN (SELECT id FROM research_sessions WHERE user_id = auth.uid()));
+
+-- ============================================================================
 -- FUNCTIONS AND TRIGGERS
 -- ============================================================================
 
@@ -120,6 +188,12 @@ CREATE TRIGGER update_research_sessions_updated_at
   FOR EACH ROW
   EXECUTE FUNCTION update_updated_at_column();
 
+-- Trigger to auto-update research_opportunities updated_at
+CREATE TRIGGER update_research_opportunities_updated_at
+  BEFORE UPDATE ON research_opportunities
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
+
 -- ============================================================================
 -- HELPER FUNCTION TO CREATE RESEARCH SESSION
 -- ============================================================================
@@ -127,13 +201,14 @@ CREATE TRIGGER update_research_sessions_updated_at
 CREATE OR REPLACE FUNCTION create_research_session(
   p_user_id UUID,
   p_title TEXT,
-  p_thesis TEXT
+  p_thesis TEXT,
+  p_strategy TEXT DEFAULT 'general'
 ) RETURNS UUID AS $$
 DECLARE
   v_session_id UUID;
 BEGIN
-  INSERT INTO research_sessions (user_id, title, thesis, status, research_started_at)
-  VALUES (p_user_id, p_title, p_thesis, 'researching', NOW())
+  INSERT INTO research_sessions (user_id, title, thesis, strategy, status)
+  VALUES (p_user_id, p_title, p_thesis, p_strategy, 'pending')
   RETURNING id INTO v_session_id;
 
   RETURN v_session_id;

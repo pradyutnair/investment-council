@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -24,7 +24,7 @@ import {
 import { ChatInterface } from './chat-interface';
 import { FormattedMarkdown } from './formatted-markdown';
 import { VerdictForm } from './verdict-form';
-import type { ResearchSession } from '@/src/lib/actions/research';
+import type { ResearchSession, ResearchOpportunity } from '@/src/lib/actions/research';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
@@ -159,30 +159,65 @@ export function ResearchView({ session, initialMessages }: ResearchViewProps) {
   const [hasStartedResearching, setHasStartedResearching] = useState(false);
   const [researchError, setResearchError] = useState<string | null>(null);
   const [currentPhase, setCurrentPhase] = useState<string | null>(null);
-  const [currentAgent, setCurrentAgent] = useState<string | null>(null);
+  const [currentMessage, setCurrentMessage] = useState<string | null>(null);
   const [isCouncilRunning, setIsCouncilRunning] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // Thesis-based workflow state
+  const [opportunities, setOpportunities] = useState<ResearchOpportunity[]>([]);
+  const [discoveredOpportunities, setDiscoveredOpportunities] = useState<any[]>(session.discovered_opportunities || []);
+  const [finalVerdict, setFinalVerdict] = useState<any>(session.final_verdict);
+
   // Get strategy from session (defaults to 'general')
   const strategy = (session as any).strategy || 'general';
+
+  // Check if this is a thesis-based session (has discovered_opportunities)
+  const isThesisBased = session.status === 'pending' || session.status === 'discovering' ||
+                        session.status === 'researching' || session.status === 'analyzing' ||
+                        discoveredOpportunities.length > 0;
+
+  // Track if we've already auto-started to prevent double execution
+  const hasAutoStarted = useRef(false);
+
+  // Auto-start research for specialized strategies (not general)
+  useEffect(() => {
+    // Auto-start if:
+    // 1. Session is pending
+    // 2. No research report exists
+    // 3. Not already researching
+    // 4. Haven't already auto-started
+    // 5. This is a specialized strategy (not general)
+    const shouldAutoStart = 
+      session.status === 'pending' && 
+      !session.research_report && 
+      !isResearching && 
+      !hasAutoStarted.current &&
+      strategy !== 'general';
+
+    if (shouldAutoStart) {
+      hasAutoStarted.current = true;
+      // Small delay to ensure component is mounted
+      const timer = setTimeout(() => {
+        startResearch();
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [session.status, session.research_report, strategy]);
 
   const startResearch = async () => {
     setIsResearching(true);
     setResearchError(null);
     setHasStartedResearching(false);
     setCurrentPhase(null);
-    setCurrentAgent(null);
+    setCurrentMessage(null);
 
     try {
-      // Use specialized endpoint for strategy-based research
-      const response = await fetch('/api/research/specialized', {
+      // Use thesis-based workflow endpoint
+      const response = await fetch('/api/research/thesis-start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          sessionId: session.id,
-          strategy: strategy,
-        }),
+        body: JSON.stringify({ sessionId: session.id }),
       });
 
       if (!response.ok) {
@@ -207,46 +242,41 @@ export function ResearchView({ session, initialMessages }: ResearchViewProps) {
           if (line.startsWith('data: ')) {
             try {
               const data = JSON.parse(line.slice(6));
-              
+
               // Only show researching status after receiving first data from API
               if (!hasReceivedData) {
                 hasReceivedData = true;
                 setHasStartedResearching(true);
-                setStatus('researching');
               }
 
-              // Update current phase and agent for UI display
-              if (data.type && data.type !== 'complete' && data.type !== 'error') {
-                setCurrentPhase(data.type);
-                setCurrentAgent(data.agent || null);
-              }
-
-              if (data.type === 'complete') {
-                // Parse the complete result
-                try {
-                  const results = JSON.parse(data.content);
-                  setResearchReport(results.researchReport);
-                  if (results.verdict) {
-                    setVerdict(results.verdict);
-                  }
-                  // Council analyses are already saved to DB by the API
-                  // Refresh to get updated data
-                  router.refresh();
-                } catch {
-                  // If content is just a string report
-                  setResearchReport(data.content);
-                }
-                setStatus('council_gather');
+              // Handle different event types
+              if (data.type === 'status') {
+                setStatus(data.stage === 'discovering' ? 'discovering' :
+                       data.stage === 'discovered' ? 'researching' :
+                       data.stage === 'researching' ? 'researching' :
+                       data.stage === 'analyzing' ? 'analyzing' : status);
+                setCurrentPhase(data.stage);
+                setCurrentMessage(data.message);
+              } else if (data.type === 'progress') {
+                setCurrentPhase(`analyzing-${data.ticker}`);
+                setCurrentMessage(`${data.stage}: ${data.ticker} (${data.current}/${data.total})`);
+              } else if (data.type === 'verdict') {
+                setFinalVerdict(data);
+                setStatus('deliberation');
+              } else if (data.type === 'complete') {
+                setStatus('deliberation');
                 setCurrentPhase(null);
-                setCurrentAgent(null);
+                setCurrentMessage(null);
+                toast.success('Research Complete', { description: `Analyzed ${data.summary?.totalAnalyzed || 0} opportunities` });
+                router.refresh();
               } else if (data.type === 'error') {
-                const errorMsg = data.content || 'Research failed';
+                const errorMsg = data.message || 'Research failed';
                 setResearchError(errorMsg);
                 toast.error('Research Failed', { description: errorMsg });
                 setIsResearching(false);
                 setHasStartedResearching(false);
                 setCurrentPhase(null);
-                setCurrentAgent(null);
+                setCurrentMessage(null);
               }
             } catch (e) {}
           }
@@ -260,7 +290,7 @@ export function ResearchView({ session, initialMessages }: ResearchViewProps) {
       setIsResearching(false);
       setHasStartedResearching(false);
       setCurrentPhase(null);
-      setCurrentAgent(null);
+      setCurrentMessage(null);
     } finally {
       setIsResearching(false);
     }
@@ -348,14 +378,16 @@ export function ResearchView({ session, initialMessages }: ResearchViewProps) {
   const getStatusConfig = () => {
     const configs: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
       pending: { label: 'Ready', color: 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400', icon: <FileText className="w-3 h-3" /> },
+      discovering: { label: 'Discovering', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400', icon: <Search className="w-3 h-3 animate-pulse" /> },
       researching: { label: 'Researching', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400', icon: <Loader2 className="w-3 h-3 animate-spin" /> },
+      analyzing: { label: 'Analyzing', color: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400', icon: <Brain className="w-3 h-3 animate-pulse" /> },
       council_gather: { label: 'Council Ready', color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400', icon: <Users className="w-3 h-3" /> },
       council_debate: { label: 'Debating', color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400', icon: <Loader2 className="w-3 h-3 animate-spin" /> },
       deliberation: { label: 'Deliberation', color: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400', icon: <MessageSquare className="w-3 h-3" /> },
       finalized: { label: 'Finalized', color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400', icon: <CheckCircle2 className="w-3 h-3" /> },
     };
     // Don't show researching badge unless API has actually started responding
-    if (status === 'researching' && !hasStartedResearching) {
+    if ((status === 'researching' || status === 'discovering' || status === 'analyzing') && !hasStartedResearching) {
       return configs.pending;
     }
     return configs[status] || configs.pending;
@@ -414,10 +446,10 @@ export function ResearchView({ session, initialMessages }: ResearchViewProps) {
                 Council
                 {councilAnalyses.length > 0 && <CheckCircle2 className="w-3.5 h-3.5 ml-2 text-emerald-500" />}
               </TabsTrigger>
-              <TabsTrigger 
-                value="deliberation" 
+              <TabsTrigger
+                value="deliberation"
                 className="h-11 px-0 pb-0 data-[state=active]:shadow-none data-[state=active]:bg-transparent border-b-2 border-transparent data-[state=active]:border-foreground rounded-none text-[13px] font-medium"
-                disabled={status === 'pending' || status === 'researching'}
+                disabled={status === 'pending' || status === 'discovering' || status === 'researching' || status === 'analyzing'}
               >
                 <MessageSquare className="w-4 h-4 mr-2" />
                 Chat
@@ -448,21 +480,26 @@ export function ResearchView({ session, initialMessages }: ResearchViewProps) {
                           <Loader2 className="w-7 h-7 text-blue-500 animate-spin" />
                         </div>
                         <h3 className="text-lg font-medium mb-2">
-                          {strategy !== 'general' ? `${strategy.charAt(0).toUpperCase() + strategy.slice(1).replace('-', ' ')} Research` : 'Deep Research'} in Progress
+                          {currentPhase === 'discovering' ? 'Discovering Opportunities' :
+                           currentPhase === 'researching' ? 'Researching Opportunities' :
+                           currentPhase?.startsWith('analyzing') ? 'Analyzing Opportunities' :
+                           'Investment Research in Progress'}
                         </h3>
                         <p className="text-[14px] text-muted-foreground max-w-sm mx-auto mb-4">
-                          This may take several minutes. Running comprehensive research on your thesis.
+                          {currentPhase === 'discovering' && 'Finding investment opportunities that match your thesis...'}
+                          {currentPhase === 'researching' && 'Running deep research on discovered opportunities...'}
+                          {currentPhase?.startsWith('analyzing') && 'Running strategy and critique analysis on each opportunity...'}
+                          {!currentPhase && 'This may take several minutes. Running comprehensive research on your thesis.'}
                         </p>
                         {/* Phase indicator */}
                         {currentPhase && (
                           <div className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-muted/50 text-[13px]">
                             <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
                             <span className="text-muted-foreground">
-                              {currentPhase === 'starting' && 'Initializing...'}
-                              {currentPhase === 'researching' && 'Running Gemini Deep Research...'}
-                              {currentPhase === 'strategy_analysis' && `${currentAgent || strategy} agent analyzing...`}
-                              {currentPhase === 'critique' && `Council critique: ${currentAgent || 'in progress'}...`}
-                              {currentPhase === 'verdict' && 'Generating investment verdict...'}
+                              {currentPhase === 'discovering' && 'Discovering opportunities from thesis...'}
+                              {currentPhase === 'researching' && 'Researching each opportunity...'}
+                              {currentPhase?.startsWith('analyzing') && currentMessage && currentMessage}
+                              {!currentMessage && currentPhase && currentPhase}
                             </span>
                           </div>
                         )}
@@ -474,18 +511,13 @@ export function ResearchView({ session, initialMessages }: ResearchViewProps) {
                         </div>
                         <h3 className="text-lg font-medium mb-2">Ready to Research</h3>
                         <p className="text-[14px] text-muted-foreground mb-2 max-w-sm mx-auto">
-                          {strategy !== 'general' 
-                            ? `The ${strategy.replace('-', ' ')} strategy agent will analyze your thesis with specialized focus.`
-                            : 'Gemini Deep Research will analyze your thesis and provide a comprehensive investment report.'
-                          }
+                          Our AI will discover specific investment opportunities matching your thesis, research each one, and provide investment recommendations.
                         </p>
-                        {strategy !== 'general' && (
-                          <p className="text-[12px] text-muted-foreground/70 mb-6 max-w-sm mx-auto">
-                            Research → Strategy Analysis → Council Critique → Verdict
-                          </p>
-                        )}
+                        <p className="text-[12px] text-muted-foreground/70 mb-6 max-w-sm mx-auto">
+                          Discover Opportunities → Research Each → Strategy Analysis → Critiques → Final Verdict
+                        </p>
                         <Button onClick={startResearch} className="h-10">
-                          Start {strategy !== 'general' ? `${strategy.charAt(0).toUpperCase() + strategy.slice(1).replace('-', ' ')} ` : ''}Research
+                          Start Investment Research
                           <ArrowRight className="w-4 h-4 ml-2" />
                         </Button>
                       </div>
@@ -612,7 +644,26 @@ export function ResearchView({ session, initialMessages }: ResearchViewProps) {
       </div>
 
       {/* Verdict Footer */}
-      {verdict && (
+      {finalVerdict ? (
+        <div className="border-t border-border px-6 py-3 bg-muted/30">
+          <div className="max-w-3xl mx-auto">
+            <div className="flex items-center gap-3 mb-2">
+              <Badge variant={finalVerdict.decision === 'invest' ? 'default' : finalVerdict.decision === 'pass' ? 'destructive' : 'secondary'}>
+                {finalVerdict.decision === 'invest' ? 'Invest' : finalVerdict.decision === 'pass' ? 'Pass' : 'Watch'}
+              </Badge>
+              {finalVerdict.confidence && (
+                <span className="text-[13px] text-muted-foreground">
+                  {finalVerdict.confidence}% conviction
+                </span>
+              )}
+            </div>
+            <p className="text-[13px] text-muted-foreground">
+              <span className="font-medium">Top Pick:</span> {finalVerdict.topPick}
+            </p>
+            <p className="text-[12px] text-muted-foreground mt-1">{finalVerdict.rationale}</p>
+          </div>
+        </div>
+      ) : verdict && (
         <div className="border-t border-border px-6 py-3 bg-muted/30">
           <div className="max-w-3xl mx-auto flex items-center gap-3">
             <Badge variant={verdict === 'invest' ? 'default' : verdict === 'pass' ? 'destructive' : 'secondary'}>
@@ -631,7 +682,7 @@ export function ResearchView({ session, initialMessages }: ResearchViewProps) {
       )}
 
       {/* Verdict Form */}
-      {status === 'deliberation' && !verdict && (
+      {status === 'deliberation' && !verdict && !finalVerdict && (
         <div className="border-t border-border px-6 py-4">
           <div className="max-w-3xl mx-auto">
             <VerdictForm sessionId={session.id} onVerdictSet={setVerdict} />
