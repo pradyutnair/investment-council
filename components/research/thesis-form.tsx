@@ -219,7 +219,7 @@ export function ThesisForm() {
             <div
               key={option.id}
               className={cn(
-                'group relative rounded-xl border-2 bg-card transition-all duration-200',
+                'group relative rounded-sm border-2 bg-card transition-all duration-200',
                 isSelected 
                   ? `${option.borderColor} bg-gradient-to-br ${option.bgGradient}` 
                   : `border-border ${option.hoverColor}`,
@@ -232,7 +232,7 @@ export function ThesisForm() {
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
                     <div className={cn(
-                      'p-2.5 rounded-lg bg-gradient-to-br',
+                      'p-2.5 rounded-sm bg-gradient-to-br',
                       option.bgGradient,
                       option.color
                     )}>
@@ -260,7 +260,7 @@ export function ThesisForm() {
                     <span
                       key={idx}
                       className={cn(
-                        'text-xs px-2 py-1 rounded-md',
+                        'text-xs px-2 py-1 rounded-sm',
                         'bg-muted/50 text-muted-foreground'
                       )}
                     >
@@ -278,7 +278,7 @@ export function ThesisForm() {
                         setShowCustomize(true);
                       }}
                       disabled={isSubmitting}
-                      className="flex-1 h-10"
+                      className="flex-1 h-10 rounded-sm"
                       variant="outline"
                     >
                       <Search className="w-4 h-4 mr-2" />
@@ -289,7 +289,14 @@ export function ThesisForm() {
                       <Button
                         onClick={() => handleQuickStart(option.id)}
                         disabled={isSubmitting}
-                        className={cn('flex-1 h-10', option.color)}
+                        className={cn(
+                          'flex-1 h-10 rounded-sm font-medium',
+                          'bg-gradient-to-r',
+                          option.id === 'value' && 'from-emerald-500/10 to-emerald-400/10 text-foreground hover:from-emerald-600/20 hover:to-emerald-500/20 border border-emerald-500/20 hover:border-emerald-500/30',
+                          option.id === 'special-sits' && 'from-purple-500/10 to-purple-400/10 text-foreground hover:from-purple-600/20 hover:to-purple-500/20 border border-purple-500/20 hover:border-purple-500/30',
+                          option.id === 'distressed' && 'from-orange-500/10 to-orange-400/10 text-foreground hover:from-orange-600/20 hover:to-orange-500/20 border border-orange-500/20 hover:border-orange-500/30',
+                          option.id === 'general' && 'from-blue-500/10 to-blue-400/10 text-foreground hover:from-blue-600/20 hover:to-blue-500/20 border border-blue-500/20 hover:border-blue-500/30'
+                        )}
                       >
                         {isLoading ? (
                           <>
@@ -313,7 +320,7 @@ export function ThesisForm() {
                         disabled={isSubmitting}
                         variant="outline"
                         size="icon"
-                        className="h-10 w-10"
+                        className="h-10 w-10 rounded-sm"
                         title="Customize"
                       >
                         <Settings2 className="w-4 h-4" />
@@ -330,14 +337,14 @@ export function ThesisForm() {
       {/* Customization Panel */}
       {showCustomize && currentOption && (
         <div className={cn(
-          'rounded-xl border-2 p-6 space-y-5 animate-in fade-in slide-in-from-top-2 duration-200',
+          'rounded-sm border-2 p-6 space-y-5 animate-in fade-in slide-in-from-top-2 duration-200',
           currentOption.borderColor,
           'bg-gradient-to-br',
           currentOption.bgGradient
         )}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className={cn('p-2 rounded-lg', currentOption.color, 'bg-background/50')}>
+              <div className={cn('p-2 rounded-sm', currentOption.color, 'bg-background/50')}>
                 {currentOption.icon}
               </div>
               <div>
@@ -371,7 +378,7 @@ export function ThesisForm() {
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder={`e.g., ${currentOption.name} - Q1 2026`}
-                className="h-10 bg-background/50"
+                className="h-10 bg-background/50 rounded-sm"
               />
             </div>
 
@@ -393,7 +400,7 @@ export function ThesisForm() {
                     : `Leave blank to use default strategy, or specify focus:\n\n${currentOption.defaultThesis}`
                 }
                 rows={5}
-                className="resize-none text-sm leading-relaxed bg-background/50"
+                className="resize-none text-sm leading-relaxed bg-background/50 rounded-sm"
                 required={currentOption.requiresThesis}
               />
               {!currentOption.requiresThesis && (
@@ -407,7 +414,14 @@ export function ThesisForm() {
             <Button
               type="submit"
               disabled={isSubmitting}
-              className={cn('w-full h-11', currentOption.color)}
+              className={cn(
+                'w-full h-11 rounded-sm font-medium',
+                'bg-gradient-to-r',
+                currentOption.id === 'value' && 'from-emerald-500/10 to-emerald-400/10 text-foreground hover:from-emerald-600/20 hover:to-emerald-500/20 border border-emerald-500/20 hover:border-emerald-500/30',
+                currentOption.id === 'special-sits' && 'from-purple-500/10 to-purple-400/10 text-foreground hover:from-purple-600/20 hover:to-purple-500/20 border border-purple-500/20 hover:border-purple-500/30',
+                currentOption.id === 'distressed' && 'from-orange-500/10 to-orange-400/10 text-foreground hover:from-orange-600/20 hover:to-orange-500/20 border border-orange-500/20 hover:border-orange-500/30',
+                currentOption.id === 'general' && 'from-blue-500/10 to-blue-400/10 text-foreground hover:from-blue-600/20 hover:to-blue-500/20 border border-blue-500/20 hover:border-blue-500/30'
+              )}
             >
               {isSubmitting && submittingStrategy === currentOption.id ? (
                 <>
