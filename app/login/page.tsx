@@ -61,19 +61,9 @@ export default async function LoginPage({
               </Button>
             </form>
 
-            <div className="relative py-2">
-              <div className="absolute inset-0 flex items-center">
-                <Separator className="bg-border" />
-              </div>
-              <div className="relative flex justify-center text-[11px] uppercase tracking-wider">
-                <span className="bg-card px-3 text-muted-foreground">
-                  or continue with
-                </span>
-              </div>
-            </div>
-
             {/* OAuth Providers */}
-            <div className="grid grid-cols-2 gap-3">
+            {/* TODO: Re-enable OAuth providers in the future when needed */}
+            {/* <div className="grid grid-cols-2 gap-3">
               <form action="/auth/sign-in/github" method="post">
                 <Button type="submit" variant="outline" className="w-full h-11 text-[14px]">
                   <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="currentColor">
@@ -93,7 +83,7 @@ export default async function LoginPage({
                   Google
                 </Button>
               </form>
-            </div>
+            </div> */}
           </CardContent>
         </Card>
 

@@ -1,4 +1,4 @@
-import { Agent } from '@mastra/core';
+import { Agent } from '@mastra/core/agent';
 
 export const riskOfficerAgent = new Agent({
   name: 'risk-officer',
@@ -62,9 +62,5 @@ Provide a structured risk assessment in markdown format:
 HIGHLIGHTING: Use <mark> tags to highlight the most severe risks, deal-breaker concerns, and critical risk mitigation recommendations. Example: <mark>Concentration risk is extreme with 80% of revenue from a single customer facing regulatory headwinds.</mark>
 
 Remember: Your goal is to ensure the investor fully understands the downside before committing capital. Be thorough but not alarmist. Quantify risks where possible.`,
-  model: {
-    provider: 'ANTHROPIC',
-    name: 'claude-3-5-sonnet-20241022',
-    toolChoice: 'auto',
-  } as any,
+  model: 'openai/gpt-4o-mini',
 });

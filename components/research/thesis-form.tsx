@@ -46,14 +46,14 @@ const STRATEGY_OPTIONS: StrategyOption[] = [
     id: 'value',
     name: 'Value Investing',
     shortName: 'Value',
-    description: 'Benjamin Graham & Bruce Greenwald style. Finds undervalued stocks with margin of safety.',
+    description: 'Benjamin Graham & Warren Buffett style. Finds undervalued stocks with margin of safety.',
     icon: <TrendingUp className="w-6 h-6" />,
     color: 'text-emerald-600 dark:text-emerald-400',
     hoverColor: 'hover:border-emerald-500/50 hover:bg-emerald-500/5',
     bgGradient: 'from-emerald-500/20 to-emerald-500/5',
     borderColor: 'border-emerald-500/40',
-    defaultThesis: 'Find deep value opportunities with strong margin of safety, low P/B ratios, and underappreciated assets.',
-    features: ['P/B < 1.5 screening', 'Asset-based valuation', 'Earnings power analysis'],
+    defaultThesis: 'Find a deep value stock trading significantly below intrinsic value with strong fundamentals, low P/E, low P/B, and a clear margin of safety.',
+    features: ['P/B < 1.5 screening', 'Asset-based valuation', 'Margin of safety'],
     requiresThesis: false,
   },
   {
@@ -66,8 +66,8 @@ const STRATEGY_OPTIONS: StrategyOption[] = [
     hoverColor: 'hover:border-purple-500/50 hover:bg-purple-500/5',
     bgGradient: 'from-purple-500/20 to-purple-500/5',
     borderColor: 'border-purple-500/40',
-    defaultThesis: 'Discover special situation opportunities: spinoffs, merger arbitrage, restructurings, and event-driven plays.',
-    features: ['Spinoff tracking', 'Merger arbitrage', 'Activist situations'],
+    defaultThesis: 'Find a special situation investment opportunity such as a spinoff, merger arbitrage, or restructuring with a clear catalyst and timeline.',
+    features: ['Spinoff tracking', 'Merger arbitrage', 'Catalyst-driven'],
     requiresThesis: false,
   },
   {
@@ -80,22 +80,22 @@ const STRATEGY_OPTIONS: StrategyOption[] = [
     hoverColor: 'hover:border-orange-500/50 hover:bg-orange-500/5',
     bgGradient: 'from-orange-500/20 to-orange-500/5',
     borderColor: 'border-orange-500/40',
-    defaultThesis: 'Find distressed opportunities: turnaround situations, beaten-down sectors, and contrarian plays at cycle bottoms.',
-    features: ['Turnaround candidates', 'Sector distress', 'Cycle analysis'],
+    defaultThesis: 'Find a distressed investment opportunity - a stock that has fallen significantly but has strong underlying assets and a path to recovery.',
+    features: ['Turnaround candidates', 'Contrarian plays', 'Cycle analysis'],
     requiresThesis: false,
   },
   {
     id: 'general',
     name: 'Custom Research',
     shortName: 'Custom',
-    description: 'Deep research on your specific thesis. Requires your investment idea.',
+    description: 'Deep research on your specific thesis or investment question.',
     icon: <Search className="w-6 h-6" />,
     color: 'text-blue-600 dark:text-blue-400',
     hoverColor: 'hover:border-blue-500/50 hover:bg-blue-500/5',
     bgGradient: 'from-blue-500/20 to-blue-500/5',
     borderColor: 'border-blue-500/40',
     defaultThesis: '',
-    features: ['Your thesis', 'Deep research', 'Multi-angle analysis'],
+    features: ['Your thesis', 'Deep research', 'Full analysis'],
     requiresThesis: true,
   },
 ];
@@ -113,7 +113,6 @@ export function ThesisForm() {
     const option = STRATEGY_OPTIONS.find(s => s.id === strategy);
     if (!option) return;
 
-    // For general/custom, require thesis
     if (option.requiresThesis) {
       setSelectedStrategy(strategy);
       setShowCustomize(true);
@@ -123,31 +122,25 @@ export function ThesisForm() {
     setIsSubmitting(true);
     setSubmittingStrategy(strategy);
 
-    try {
-      const response = await fetch('/api/research/create', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: `${option.name} Discovery`,
-          thesis: option.defaultThesis,
-          strategy,
-        }),
-      });
+    const response = await fetch('/api/research/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        title: `${option.name} Discovery`,
+        thesis: option.defaultThesis,
+        strategy,
+      }),
+    });
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to create research session');
-      }
-
-      const { sessionId } = await response.json();
-      router.push(`/dashboard/research/${sessionId}`);
-    } catch (error) {
-      console.error('Error creating research session:', error);
-      toast.error(error instanceof Error ? error.message : 'An error occurred');
-    } finally {
+    if (!response.ok) {
+      toast.error('Failed to create research session');
       setIsSubmitting(false);
       setSubmittingStrategy(null);
+      return;
     }
+
+    const { sessionId } = await response.json();
+    router.push(`/dashboard/research/${sessionId}`);
   };
 
   const handleCustomSubmit = async (e: React.FormEvent) => {
@@ -156,7 +149,6 @@ export function ThesisForm() {
     const option = STRATEGY_OPTIONS.find(s => s.id === selectedStrategy);
     if (!option) return;
 
-    // Only require thesis for general research
     if (option.requiresThesis && !thesis.trim()) {
       toast.error('Please enter your investment thesis');
       return;
@@ -165,39 +157,31 @@ export function ThesisForm() {
     setIsSubmitting(true);
     setSubmittingStrategy(selectedStrategy);
 
-    try {
-      const finalThesis = thesis.trim() || option.defaultThesis;
-      const finalTitle = title.trim() || `${option.name} Research`;
+    const finalThesis = thesis.trim() || option.defaultThesis;
+    const finalTitle = title.trim() || `${option.name} Research`;
 
-      const response = await fetch('/api/research/create', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: finalTitle,
-          thesis: finalThesis,
-          strategy: selectedStrategy,
-        }),
-      });
+    const response = await fetch('/api/research/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        title: finalTitle,
+        thesis: finalThesis,
+        strategy: selectedStrategy,
+      }),
+    });
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to create research session');
-      }
-
-      const { sessionId } = await response.json();
-      router.push(`/dashboard/research/${sessionId}`);
-    } catch (error) {
-      console.error('Error creating research session:', error);
-      toast.error(error instanceof Error ? error.message : 'An error occurred');
-    } finally {
+    if (!response.ok) {
+      toast.error('Failed to create research session');
       setIsSubmitting(false);
       setSubmittingStrategy(null);
+      return;
     }
+
+    const { sessionId } = await response.json();
+    router.push(`/dashboard/research/${sessionId}`);
   };
 
-  const currentOption = selectedStrategy 
-    ? STRATEGY_OPTIONS.find(s => s.id === selectedStrategy) 
-    : null;
+  const currentOption = selectedStrategy ? STRATEGY_OPTIONS.find(s => s.id === selectedStrategy) : null;
 
   return (
     <div className="space-y-8">
@@ -205,7 +189,7 @@ export function ThesisForm() {
       <div className="text-center space-y-2">
         <h2 className="text-xl font-semibold tracking-tight">Start New Research</h2>
         <p className="text-sm text-muted-foreground max-w-md mx-auto">
-          Choose a strategy and let the AI council discover and analyze opportunities for you.
+          Choose a strategy and let the AI discover and analyze investment opportunities for you.
         </p>
       </div>
 
@@ -219,29 +203,22 @@ export function ThesisForm() {
             <div
               key={option.id}
               className={cn(
-                'group relative rounded-sm border-2 bg-card transition-all duration-200',
+                'group relative rounded-lg border-2 bg-card transition-all duration-200',
                 isSelected 
                   ? `${option.borderColor} bg-gradient-to-br ${option.bgGradient}` 
                   : `border-border ${option.hoverColor}`,
                 isLoading && 'opacity-80'
               )}
             >
-              {/* Card Content */}
               <div className="p-5 space-y-4">
                 {/* Header */}
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
-                    <div className={cn(
-                      'p-2.5 rounded-sm bg-gradient-to-br',
-                      option.bgGradient,
-                      option.color
-                    )}>
+                    <div className={cn('p-2.5 rounded-lg bg-gradient-to-br', option.bgGradient, option.color)}>
                       {option.icon}
                     </div>
                     <div>
-                      <h3 className={cn('font-semibold text-base', option.color)}>
-                        {option.name}
-                      </h3>
+                      <h3 className={cn('font-semibold text-base', option.color)}>{option.name}</h3>
                       <p className="text-xs text-muted-foreground mt-0.5">
                         {option.requiresThesis ? 'Requires your thesis' : 'Autonomous discovery'}
                       </p>
@@ -250,20 +227,12 @@ export function ThesisForm() {
                 </div>
 
                 {/* Description */}
-                <p className="text-sm text-muted-foreground leading-relaxed">
-                  {option.description}
-                </p>
+                <p className="text-sm text-muted-foreground leading-relaxed">{option.description}</p>
 
                 {/* Features */}
                 <div className="flex flex-wrap gap-2">
                   {option.features.map((feature, idx) => (
-                    <span
-                      key={idx}
-                      className={cn(
-                        'text-xs px-2 py-1 rounded-sm',
-                        'bg-muted/50 text-muted-foreground'
-                      )}
-                    >
+                    <span key={idx} className="text-xs px-2 py-1 rounded-md bg-muted/50 text-muted-foreground">
                       {feature}
                     </span>
                   ))}
@@ -278,7 +247,7 @@ export function ThesisForm() {
                         setShowCustomize(true);
                       }}
                       disabled={isSubmitting}
-                      className="flex-1 h-10 rounded-sm"
+                      className="flex-1 h-10"
                       variant="outline"
                     >
                       <Search className="w-4 h-4 mr-2" />
@@ -289,25 +258,12 @@ export function ThesisForm() {
                       <Button
                         onClick={() => handleQuickStart(option.id)}
                         disabled={isSubmitting}
-                        className={cn(
-                          'flex-1 h-10 rounded-sm font-medium',
-                          'bg-gradient-to-r',
-                          option.id === 'value' && 'from-emerald-500/10 to-emerald-400/10 text-foreground hover:from-emerald-600/20 hover:to-emerald-500/20 border border-emerald-500/20 hover:border-emerald-500/30',
-                          option.id === 'special-sits' && 'from-purple-500/10 to-purple-400/10 text-foreground hover:from-purple-600/20 hover:to-purple-500/20 border border-purple-500/20 hover:border-purple-500/30',
-                          option.id === 'distressed' && 'from-orange-500/10 to-orange-400/10 text-foreground hover:from-orange-600/20 hover:to-orange-500/20 border border-orange-500/20 hover:border-orange-500/30',
-                          option.id === 'general' && 'from-blue-500/10 to-blue-400/10 text-foreground hover:from-blue-600/20 hover:to-blue-500/20 border border-blue-500/20 hover:border-blue-500/30'
-                        )}
+                        className="flex-1 h-10"
                       >
                         {isLoading ? (
-                          <>
-                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                            Starting...
-                          </>
+                          <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Starting...</>
                         ) : (
-                          <>
-                            <Zap className="w-4 h-4 mr-2" />
-                            Quick Start
-                          </>
+                          <><Zap className="w-4 h-4 mr-2" /> Quick Start</>
                         )}
                       </Button>
                       <Button
@@ -320,7 +276,7 @@ export function ThesisForm() {
                         disabled={isSubmitting}
                         variant="outline"
                         size="icon"
-                        className="h-10 w-10 rounded-sm"
+                        className="h-10 w-10"
                         title="Customize"
                       >
                         <Settings2 className="w-4 h-4" />
@@ -337,14 +293,14 @@ export function ThesisForm() {
       {/* Customization Panel */}
       {showCustomize && currentOption && (
         <div className={cn(
-          'rounded-sm border-2 p-6 space-y-5 animate-in fade-in slide-in-from-top-2 duration-200',
+          'rounded-lg border-2 p-6 space-y-5 animate-in fade-in slide-in-from-top-2 duration-200',
           currentOption.borderColor,
           'bg-gradient-to-br',
           currentOption.bgGradient
         )}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className={cn('p-2 rounded-sm', currentOption.color, 'bg-background/50')}>
+              <div className={cn('p-2 rounded-lg', currentOption.color, 'bg-background/50')}>
                 {currentOption.icon}
               </div>
               <div>
@@ -368,7 +324,6 @@ export function ThesisForm() {
           </div>
 
           <form onSubmit={handleCustomSubmit} className="space-y-4">
-            {/* Title (always optional) */}
             <div className="space-y-2">
               <Label htmlFor="title" className="text-sm font-medium">
                 Title <span className="text-muted-foreground font-normal">(optional)</span>
@@ -378,11 +333,10 @@ export function ThesisForm() {
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder={`e.g., ${currentOption.name} - Q1 2026`}
-                className="h-10 bg-background/50 rounded-sm"
+                className="h-10 bg-background/50"
               />
             </div>
 
-            {/* Thesis */}
             <div className="space-y-2">
               <Label htmlFor="thesis" className="text-sm font-medium">
                 {currentOption.requiresThesis ? 'Investment Thesis' : 'Custom Focus'}{' '}
@@ -400,7 +354,7 @@ export function ThesisForm() {
                     : `Leave blank to use default strategy, or specify focus:\n\n${currentOption.defaultThesis}`
                 }
                 rows={5}
-                className="resize-none text-sm leading-relaxed bg-background/50 rounded-sm"
+                className="resize-none text-sm leading-relaxed bg-background/50"
                 required={currentOption.requiresThesis}
               />
               {!currentOption.requiresThesis && (
@@ -410,29 +364,11 @@ export function ThesisForm() {
               )}
             </div>
 
-            {/* Submit */}
-            <Button
-              type="submit"
-              disabled={isSubmitting}
-              className={cn(
-                'w-full h-11 rounded-sm font-medium',
-                'bg-gradient-to-r',
-                currentOption.id === 'value' && 'from-emerald-500/10 to-emerald-400/10 text-foreground hover:from-emerald-600/20 hover:to-emerald-500/20 border border-emerald-500/20 hover:border-emerald-500/30',
-                currentOption.id === 'special-sits' && 'from-purple-500/10 to-purple-400/10 text-foreground hover:from-purple-600/20 hover:to-purple-500/20 border border-purple-500/20 hover:border-purple-500/30',
-                currentOption.id === 'distressed' && 'from-orange-500/10 to-orange-400/10 text-foreground hover:from-orange-600/20 hover:to-orange-500/20 border border-orange-500/20 hover:border-orange-500/30',
-                currentOption.id === 'general' && 'from-blue-500/10 to-blue-400/10 text-foreground hover:from-blue-600/20 hover:to-blue-500/20 border border-blue-500/20 hover:border-blue-500/30'
-              )}
-            >
+            <Button type="submit" disabled={isSubmitting} className="w-full h-11">
               {isSubmitting && submittingStrategy === currentOption.id ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Starting Research...
-                </>
+                <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Starting Research...</>
               ) : (
-                <>
-                  Start {currentOption.shortName} Research
-                  <ArrowRight className="w-4 h-4 ml-2" />
-                </>
+                <>Start {currentOption.shortName} Research <ArrowRight className="w-4 h-4 ml-2" /></>
               )}
             </Button>
           </form>
@@ -450,19 +386,15 @@ export function ThesisForm() {
             <div className="max-w-lg mx-auto text-left bg-muted/30 rounded-lg p-4 space-y-3 text-sm text-muted-foreground">
               <div className="flex items-start gap-3">
                 <span className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded">1</span>
-                <p><strong>Discovery:</strong> The screener agent finds opportunities matching your strategy.</p>
+                <p><strong>Research:</strong> Gemini AI conducts deep research on investment opportunities.</p>
               </div>
               <div className="flex items-start gap-3">
                 <span className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded">2</span>
-                <p><strong>Deep Research:</strong> Gemini conducts comprehensive research on top candidates.</p>
+                <p><strong>Council:</strong> Investment council debates and scrutinizes the findings.</p>
               </div>
               <div className="flex items-start gap-3">
                 <span className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded">3</span>
-                <p><strong>Council Critique:</strong> Skeptic & Risk Officer challenge the findings.</p>
-              </div>
-              <div className="flex items-start gap-3">
-                <span className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded">4</span>
-                <p><strong>Verdict:</strong> Final investment recommendation with conviction level.</p>
+                <p><strong>Verdict:</strong> Final recommendation with buy/sell/hold decision.</p>
               </div>
             </div>
           </CollapsibleContent>

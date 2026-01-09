@@ -1,4 +1,4 @@
-import { Agent } from '@mastra/core';
+import { Agent } from '@mastra/core/agent';
 
 export const skepticAgent = new Agent({
   name: 'the-skeptic',
@@ -51,9 +51,5 @@ Provide a structured critique in markdown format:
 HIGHLIGHTING: Use <mark> tags to highlight your most critical concerns, deal-breaker risks, and key conclusions that every investor should consider. Example: <mark>The assumed 20% growth rate is triple the industry average and lacks historical precedent.</mark>
 
 Remember: Your goal is NOT to be negative for negativity's sake, but to provide rigorous stress-testing of the investment thesis. You're trying to save the investor from potential losses.`,
-  model: {
-    provider: 'OPEN_AI',
-    name: 'gpt-4o-mini',
-    toolChoice: 'auto',
-  } as any,
+  model: 'openai/gpt-4o-mini',
 });

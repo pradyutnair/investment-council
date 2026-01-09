@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { getResearchSession, addCouncilAnalysis, updateCouncilDebate } from '@/lib/actions/research';
+import { getResearchSession, addCouncilAnalysis, updateCouncilDebate } from '@/src/lib/actions/research';
 import { councilService } from '@/src/services/council-service';
 
 export const runtime = 'nodejs';
