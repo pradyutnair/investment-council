@@ -115,10 +115,14 @@ export function ResearchView({ session, initialMessages = [] }: ResearchViewProp
       for (const line of lines) {
         if (line.startsWith('data: ')) {
           const data = JSON.parse(line.slice(6));
+          console.log('Research event:', data.type, data);
           if (data.type === 'progress' || data.type === 'status') {
             setProgress(data.message);
           } else if (data.type === 'complete') {
             toast.success('Research complete!');
+            if (data.report) {
+              setReport(data.report);
+            }
             router.refresh();
           } else if (data.type === 'error') {
             setError(data.message);

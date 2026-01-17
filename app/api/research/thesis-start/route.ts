@@ -4,7 +4,7 @@ import { runResearch } from '@/src/mastra/workflows/thesis-based-investment';
 import { getResearchSession } from '@/src/lib/actions/research';
 
 export const runtime = 'nodejs';
-export const maxDuration = 300; // 5 minutes (Vercel hobby limit)
+export const maxDuration = 600; // 10 minutes (account for Gemini research time)
 
 /**
  * Simple research API
@@ -58,6 +58,8 @@ export async function POST(req: NextRequest) {
         (message) => send({ type: 'progress', message })
       );
 
+      console.log('Research result:', { error: result.error, reportLength: result.report?.length, duration: result.duration });
+
       if (result.error) {
         send({ type: 'error', message: result.error });
         controller.close();
@@ -65,7 +67,7 @@ export async function POST(req: NextRequest) {
       }
 
       // Save report to database
-      await supabase
+      const { error: updateError } = await supabase
         .from('research_sessions')
         .update({
           research_report: result.report,
@@ -74,7 +76,14 @@ export async function POST(req: NextRequest) {
         })
         .eq('id', sessionId);
 
-      send({ type: 'complete', duration: result.duration });
+      if (updateError) {
+        console.error('Failed to save research report:', updateError);
+        send({ type: 'error', message: 'Failed to save research report: ' + updateError.message });
+        controller.close();
+        return;
+      }
+
+      send({ type: 'complete', duration: result.duration, report: result.report });
       controller.close();
     },
   });
